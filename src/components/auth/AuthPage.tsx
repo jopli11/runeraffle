@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import styled from '@emotion/styled';
-import { registerWithEmail, loginWithEmail, signInWithGoogle } from '../../config/firebase';
+import { registerWithEmail, loginWithEmail, signInWithGoogle, sendPasswordResetEmail } from '../../config/firebase';
 
 // Styled components
 const Container = styled.div`
@@ -173,24 +173,31 @@ const GoogleIcon = () => (
 );
 
 export default function AuthPage() {
-  const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
+  const [activeTab, setActiveTab] = useState<'login' | 'register' | 'reset'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSuccessMessage(null);
     setIsLoading(true);
 
     try {
       if (activeTab === 'login') {
         await loginWithEmail(email, password);
         window.navigate('/');
-      } else {
-        await registerWithEmail(email, password);
-        window.navigate('/');
+      } else if (activeTab === 'register') {
+        await registerWithEmail(email, password, displayName);
+        setSuccessMessage('Account created! Please check your email for verification.');
+        setTimeout(() => window.navigate('/'), 2000);
+      } else if (activeTab === 'reset') {
+        await sendPasswordResetEmail(email);
+        setSuccessMessage('Password reset email sent. Please check your inbox.');
       }
     } catch (err: any) {
       console.error('Auth error:', err);
@@ -258,30 +265,56 @@ export default function AuthPage() {
     <Container>
       <Card>
         <CardHeader>
-          <CardTitle>Welcome to RuneRaffle</CardTitle>
+          <CardTitle>{activeTab === 'login' ? 'Welcome Back' : activeTab === 'register' ? 'Create Account' : 'Reset Password'}</CardTitle>
           <CardDescription>
-            {activeTab === 'login'
-              ? 'Sign in to your account to enter raffles and win prizes'
-              : 'Create an account to start entering raffles today'}
+            {activeTab === 'login' ? 'Sign in to your account to continue' : 
+             activeTab === 'register' ? 'Create a new account to get started' :
+             'Enter your email to reset your password'}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs>
-            <Tab
-              active={activeTab === 'login'}
-              onClick={() => setActiveTab('login')}
+            <Tab 
+              active={activeTab === 'login'} 
+              onClick={() => { setActiveTab('login'); setError(null); setSuccessMessage(null); }}
             >
               Login
             </Tab>
-            <Tab
-              active={activeTab === 'register'}
-              onClick={() => setActiveTab('register')}
+            <Tab 
+              active={activeTab === 'register'} 
+              onClick={() => { setActiveTab('register'); setError(null); setSuccessMessage(null); }}
             >
               Register
             </Tab>
+            <Tab 
+              active={activeTab === 'reset'} 
+              onClick={() => { setActiveTab('reset'); setError(null); setSuccessMessage(null); }}
+            >
+              Reset
+            </Tab>
           </Tabs>
+          
+          {successMessage && (
+            <div style={{ padding: '0.75rem', backgroundColor: 'rgba(22, 163, 74, 0.1)', color: 'rgb(22, 163, 74)', borderRadius: '0.375rem', marginBottom: '1rem' }}>
+              {successMessage}
+            </div>
+          )}
 
           <Form onSubmit={handleSubmit}>
+            {activeTab === 'register' && (
+              <FormGroup>
+                <Label htmlFor="displayName">Display Name</Label>
+                <Input
+                  id="displayName"
+                  type="text"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="Your display name"
+                  required={activeTab === 'register'}
+                />
+              </FormGroup>
+            )}
+            
             <FormGroup>
               <Label htmlFor="email">Email</Label>
               <Input
@@ -289,35 +322,53 @@ export default function AuthPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                placeholder="email@example.com"
                 required
               />
             </FormGroup>
-            <FormGroup>
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </FormGroup>
+            
+            {activeTab !== 'reset' && (
+              <FormGroup>
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required={activeTab !== 'reset'}
+                />
+              </FormGroup>
+            )}
+            
             {error && <ErrorMessage>{error}</ErrorMessage>}
+            
             <Button type="submit" disabled={isLoading}>
-              {isLoading
-                ? 'Loading...'
-                : activeTab === 'login'
-                ? 'Sign In'
-                : 'Create Account'}
+              {isLoading ? 'Processing...' : activeTab === 'login' ? 'Sign In' : activeTab === 'register' ? 'Create Account' : 'Reset Password'}
             </Button>
           </Form>
-
-          <Divider>or</Divider>
-
-          <GoogleButton type="button" onClick={handleGoogleSignIn} disabled={isLoading}>
-            <GoogleIcon />
-            Continue with Google
-          </GoogleButton>
+          
+          {activeTab !== 'reset' && (
+            <>
+              <Divider>Or continue with</Divider>
+              <GoogleButton type="button" onClick={handleGoogleSignIn} disabled={isLoading}>
+                <GoogleIcon />
+                Sign {activeTab === 'login' ? 'in' : 'up'} with Google
+              </GoogleButton>
+            </>
+          )}
+          
+          {activeTab === 'login' && (
+            <div style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.875rem', color: 'hsl(var(--muted-foreground))' }}>
+              <a 
+                href="#" 
+                onClick={(e) => { e.preventDefault(); setActiveTab('reset'); setError(null); setSuccessMessage(null); }}
+                style={{ color: 'hsl(var(--primary))', textDecoration: 'none' }}
+              >
+                Forgot your password?
+              </a>
+            </div>
+          )}
         </CardContent>
       </Card>
     </Container>

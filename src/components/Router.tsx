@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import App from '../App';
 import { Header } from './layout/Header';
+import { Footer } from './layout/Footer';
 import { ProfilePage } from './profile/ProfilePage';
 import CompetitionsPage from './competitions/CompetitionsPage';
 import CompetitionPage from './competitions/CompetitionPage';
@@ -92,6 +93,7 @@ export default function Router() {
         <Main>
           {renderContent()}
         </Main>
+        <Footer />
       </PageWrapper>
     </AuthProvider>
   );

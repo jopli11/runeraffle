@@ -32,9 +32,20 @@ export const signInWithGoogle = async () => {
   }
 };
 
-export const registerWithEmail = async (email: string, password: string) => {
+export const registerWithEmail = async (email: string, password: string, displayName?: string) => {
   try {
     const result = await auth.createUserWithEmailAndPassword(email, password);
+    
+    // If displayName is provided, update the user profile
+    if (displayName && result.user) {
+      await result.user.updateProfile({
+        displayName: displayName
+      });
+      
+      // Send email verification
+      await result.user.sendEmailVerification();
+    }
+    
     return result.user;
   } catch (error) {
     console.error("Error registering with email: ", error);
@@ -67,6 +78,49 @@ export const getCurrentUser = () => {
 
 export const onUserStateChanged = (callback: (user: firebase.User | null) => void) => {
   return auth.onAuthStateChanged(callback);
+};
+
+export const sendPasswordResetEmail = async (email: string) => {
+  try {
+    await auth.sendPasswordResetEmail(email);
+  } catch (error) {
+    console.error("Error sending password reset email: ", error);
+    throw error;
+  }
+};
+
+export const sendEmailVerification = async (user = auth.currentUser) => {
+  if (!user) throw new Error('No user is currently logged in');
+  
+  try {
+    await user.sendEmailVerification();
+  } catch (error) {
+    console.error("Error sending email verification: ", error);
+    throw error;
+  }
+};
+
+export const updateUserProfile = async (displayName: string, photoURL?: string) => {
+  const user = auth.currentUser;
+  if (!user) throw new Error('No user is currently logged in');
+  
+  try {
+    await user.updateProfile({
+      displayName: displayName,
+      photoURL: photoURL || user.photoURL
+    });
+  } catch (error) {
+    console.error("Error updating user profile: ", error);
+    throw error;
+  }
+};
+
+export const getUserCreationTime = () => {
+  const user = auth.currentUser;
+  if (!user) return null;
+  
+  // Access the metadata with the Firebase compat API
+  return user.metadata.creationTime;
 };
 
 export { auth, db }; 
