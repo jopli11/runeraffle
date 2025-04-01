@@ -35,7 +35,6 @@ const LogoContainer = styled.div`
 const Logo = styled.a`
   display: flex;
   align-items: center;
-  gap: 0.5rem;
   font-weight: bold;
   font-size: 1.5rem;
   text-decoration: none;

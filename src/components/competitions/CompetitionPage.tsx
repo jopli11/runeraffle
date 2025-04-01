@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from '@emotion/styled';
+import { getCompetition, buyTicket, Competition as FirestoreCompetition } from '../../services/firestore';
+import { useAuth } from '../../context/AuthContext';
 
 // Styled components
 const Container = styled.div`
@@ -228,8 +230,15 @@ const ProgressDetails = styled.div`
   display: flex;
   justify-content: space-between;
   margin-top: 0.5rem;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
+`;
+
+const ProgressText = styled.span`
   color: rgba(255, 255, 255, 0.7);
+`;
+
+const ProgressPercentage = styled.span`
+  font-weight: 600;
 `;
 
 const TicketInfo = styled.div`
@@ -422,222 +431,662 @@ const LockIcon = () => (
   </svg>
 );
 
-// Sample competition data
-const competition = {
-  id: 1,
-  title: 'Dragon Slayer Challenge',
-  description: 'Enter this raffle for a chance to win the ultimate Dragon gear set and 100M OSRS Gold. The winner will be selected randomly when all tickets are sold.',
-  status: 'active',
-  difficulty: 'hard',
-  prizeTitle: 'Dragon Gear Set + 100M OSRS Gold',
-  prizeValue: '100M OSRS Gold',
-  prizeDescription: 'The complete Dragon armor set including the full helmet, platebody, platelegs, boots, and shield. Additionally, the winner receives 100M OSRS Gold to spend however they like.',
-  ticketPrice: 5,
-  ticketsSold: 683,
-  totalTickets: 1000,
-  endsIn: '3 days',
-  createdAt: '2023-07-15',
-  hashProof: '7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069',
-  maxTicketsPerUser: 20,
-  isLimitedEntry: true,
-  featured: true
+// Helper function to format timestamp
+const formatTimeLeft = (endsAt: any) => {
+  if (!endsAt) return 'N/A';
+  
+  try {
+    const endDate = new Date(endsAt.seconds * 1000);
+    const now = new Date();
+    
+    // If already ended
+    if (endDate <= now) {
+      return 'Ended';
+    }
+    
+    const diffMs = endDate.getTime() - now.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (diffDays > 0) {
+      return `${diffDays} days`;
+    }
+    
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    if (diffHours > 0) {
+      return `${diffHours} hours`;
+    }
+    
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    return `${diffMinutes} minutes`;
+  } catch (error) {
+    console.error('Error formatting time', error);
+    return 'N/A';
+  }
 };
+
+// Add missing styled components for How It Works section
+const HowItWorksSection = styled.section`
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+`;
+
+const Step = styled.div`
+  display: flex;
+  margin-bottom: 1.5rem;
+  align-items: flex-start;
+`;
+
+const StepNumber = styled.div`
+  background-color: #4f46e5;
+  color: white;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  margin-right: 1rem;
+  flex-shrink: 0;
+`;
+
+const StepContent = styled.div`
+  flex: 1;
+`;
+
+const StepTitle = styled.h4`
+  margin: 0 0 0.5rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+`;
+
+const StepDescription = styled.p`
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.9rem;
+  line-height: 1.4;
+`;
+
+// Status components
+const StatusItem = styled.div`
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.75rem;
+`;
+
+const StatusLabel = styled.span`
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.7);
+  margin-right: 0.5rem;
+`;
+
+const StatusValue = styled.span`
+  font-weight: 600;
+`;
+
+const StatusDot = styled.div<{ status: string }>`
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  background-color: ${props => {
+    switch (props.status) {
+      case 'active': return 'rgb(22, 163, 74)';
+      case 'ending': return 'rgb(245, 158, 11)';
+      case 'complete': return 'rgb(22, 163, 74)';
+      case 'cancelled': return 'rgb(239, 68, 68)';
+      default: return 'rgba(255, 255, 255, 0.5)';
+    }
+  }};
+  margin-right: 0.5rem;
+`;
+
+const TicketSelector = styled.div`
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem;
+`;
+
+const TicketSelectorLabel = styled.span`
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.7);
+  margin-right: 0.5rem;
+`;
+
+const TicketSelectorControls = styled.div`
+  display: flex;
+  align-items: center;
+`;
+
+const TicketButton = styled.button`
+  width: 2rem;
+  height: 2rem;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 1.25rem;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+const TicketCount = styled.span`
+  font-weight: 600;
+  min-width: 1.5rem;
+  text-align: center;
+`;
+
+const TotalPrice = styled.div`
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem;
+`;
+
+const TotalPriceLabel = styled.span`
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.7);
+  margin-right: 0.5rem;
+`;
+
+const TotalPriceValue = styled.span`
+  font-weight: 600;
+`;
+
+const SignInButton = styled.button`
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+  gap: 0.5rem;
+  width: 100%;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+  
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+`;
+
+const PurchaseButton = styled.button`
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+  gap: 0.5rem;
+  width: 100%;
+  background-color: hsl(var(--primary));
+  color: white;
+  
+  &:hover {
+    transform: translateY(-2px);
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+`;
+
+const CreditsInfo = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+`;
+
+const CreditsAvailable = styled.span`
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.7);
+`;
+
+const CreditsValue = styled.span`
+  font-weight: 600;
+`;
+
+const AddCreditsButton = styled.button`
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+  gap: 0.5rem;
+  width: 100%;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+  
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+`;
+
+const CompletedMessage = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+const CompletedMessageText = styled.span`
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.7);
+`;
 
 export default function CompetitionPage() {
   const [ticketCount, setTicketCount] = useState(1);
-  const [activeTab, setActiveTab] = useState<'details' | 'fairDraw'>('details');
+  const [competition, setCompetition] = useState<FirestoreCompetition | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [purchasing, setPurchasing] = useState(false);
+  const [purchaseSuccess, setPurchaseSuccess] = useState(false);
+  const { currentUser, userCredits, setUserCredits } = useAuth();
+  
+  // Extract competition ID from URL path
+  const getCompetitionId = () => {
+    const path = window.location.pathname;
+    const pathSegments = path.split('/');
+    return pathSegments[pathSegments.length - 1];
+  };
+
+  // Fetch competition data
+  useEffect(() => {
+    const fetchCompetition = async () => {
+      const competitionId = getCompetitionId();
+      if (!competitionId) {
+        setError('Competition ID not found in URL');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const competitionData = await getCompetition(competitionId);
+        if (!competitionData) {
+          setError('Competition not found');
+        } else {
+          setCompetition(competitionData);
+        }
+      } catch (err) {
+        console.error('Error fetching competition:', err);
+        setError('Failed to load competition. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCompetition();
+  }, []);
 
   const incrementTickets = () => {
-    if (ticketCount < competition.maxTicketsPerUser) {
-      setTicketCount(prev => prev + 1);
+    // Limit by user's credits and available tickets
+    const maxTickets = competition ? 
+      Math.min(
+        Math.floor(userCredits / competition.ticketPrice),
+        competition.totalTickets - competition.ticketsSold
+      ) : 0;
+    
+    if (ticketCount < maxTickets) {
+      setTicketCount(ticketCount + 1);
     }
   };
 
   const decrementTickets = () => {
-    setTicketCount(prev => prev > 1 ? prev - 1 : 1);
+    if (ticketCount > 1) {
+      setTicketCount(ticketCount - 1);
+    }
   };
 
   const handleBackClick = () => {
     window.navigate('/competitions');
   };
+  
+  const handleBuyTickets = async () => {
+    if (!currentUser || !competition || !competition.id) {
+      return;
+    }
+    
+    const totalCost = ticketCount * competition.ticketPrice;
+    
+    if (userCredits < totalCost) {
+      alert('Not enough credits to purchase tickets.');
+      return;
+    }
+    
+    if (competition.ticketsSold + ticketCount > competition.totalTickets) {
+      alert('Not enough tickets available.');
+      return;
+    }
+    
+    setPurchasing(true);
+    
+    try {
+      // Buy tickets one by one to get unique ticket numbers
+      for (let i = 0; i < ticketCount; i++) {
+        await buyTicket({
+          competitionId: competition.id,
+          userId: currentUser.uid,
+          ticketNumber: competition.ticketsSold + i + 1
+        });
+      }
+      
+      // Update local competition state
+      setCompetition({
+        ...competition,
+        ticketsSold: competition.ticketsSold + ticketCount
+      });
+      
+      // Update user credits
+      setUserCredits(userCredits - totalCost);
+      
+      // Reset ticket count and show success message
+      setTicketCount(1);
+      setPurchaseSuccess(true);
+      
+      setTimeout(() => {
+        setPurchaseSuccess(false);
+      }, 3000);
+    } catch (err) {
+      console.error('Error purchasing tickets:', err);
+      alert('Failed to purchase tickets. Please try again.');
+    } finally {
+      setPurchasing(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <Container>
+        <div style={{ textAlign: 'center', padding: '3rem' }}>
+          Loading competition details...
+        </div>
+      </Container>
+    );
+  }
+
+  if (error || !competition) {
+    return (
+      <Container>
+        <BackButton onClick={handleBackClick}>
+          <ArrowLeftIcon /> Back to Competitions
+        </BackButton>
+        <div style={{ textAlign: 'center', padding: '3rem', color: 'red' }}>
+          {error || 'Competition not found'}
+        </div>
+      </Container>
+    );
+  }
+
+  const remainingTickets = competition.totalTickets - competition.ticketsSold;
+  const isEnded = competition.status === 'complete' || competition.status === 'cancelled';
+  const formattedTimeLeft = formatTimeLeft(competition.endsAt);
+  const progressPercentage = Math.min(
+    Math.round((competition.ticketsSold / competition.totalTickets) * 100),
+    100
+  );
 
   return (
     <Container>
       <BackButton onClick={handleBackClick}>
-        <ArrowLeftIcon />
-        Back to Raffles
+        <ArrowLeftIcon /> Back to Competitions
       </BackButton>
       
       <CompetitionLayout>
         <MainContent>
           <CompetitionHeader>
             <BadgeContainer>
-              {competition.featured && (
-                <Badge variant="featured">
-                  Featured
-                </Badge>
-              )}
-              <Badge variant="primary">
-                Ends in {competition.endsIn}
-              </Badge>
-              {competition.isLimitedEntry && (
-                <Badge variant="limited">
-                  Limited Entries
-                </Badge>
-              )}
               <Badge variant="status">
-                Active
+                {competition.status === 'active' ? 'Active' : 
+                 competition.status === 'ending' ? 'Ending Soon' : 
+                 competition.status === 'complete' ? 'Completed' : 'Cancelled'}
               </Badge>
+              <Badge variant="primary">{competition.difficulty}</Badge>
+              {competition.status === 'ending' && (
+                <Badge variant="limited">Limited Time</Badge>
+              )}
             </BadgeContainer>
+            
             <Heading1>{competition.title}</Heading1>
             <Description>{competition.description}</Description>
           </CompetitionHeader>
           
-          <TabsContainer>
-            <Tab 
-              active={activeTab === 'details'} 
-              onClick={() => setActiveTab('details')}
-            >
-              Details
-            </Tab>
-            <Tab 
-              active={activeTab === 'fairDraw'} 
-              onClick={() => setActiveTab('fairDraw')}
-            >
-              Provably Fair
-            </Tab>
-          </TabsContainer>
+          <PrizeHeader>
+            <Heading2>Prize Details</Heading2>
+          </PrizeHeader>
           
-          {activeTab === 'details' && (
-            <>
-              <PrizeHeader>
-                <Heading2>Prize Details</Heading2>
-              </PrizeHeader>
-              
-              <PrizeCard>
-                <PrizeIconContainer>
-                  <TrophyIcon />
-                </PrizeIconContainer>
-                <PrizeContent>
-                  <PrizeName>{competition.prizeTitle}</PrizeName>
-                  <PrizeValue>{competition.prizeValue}</PrizeValue>
-                  <PrizeDescription>{competition.prizeDescription}</PrizeDescription>
-                </PrizeContent>
-              </PrizeCard>
-            </>
-          )}
+          <PrizeCard>
+            <PrizeIconContainer>
+              <TrophyIcon />
+            </PrizeIconContainer>
+            
+            <PrizeContent>
+              <PrizeName>{competition.prize}</PrizeName>
+              <PrizeValue>Value: {competition.prizeValue}</PrizeValue>
+              <PrizeDescription>
+                Win this amazing prize by participating in our raffle. Each ticket gives you a chance to win!
+              </PrizeDescription>
+            </PrizeContent>
+          </PrizeCard>
           
-          {activeTab === 'fairDraw' && (
-            <FairDrawSection>
-              <Heading2>Provably Fair Drawing System</Heading2>
-              <Description>
-                Our raffle system uses a provably fair mechanism to ensure transparency and fairness in selecting winners. Here's how it works:
-              </Description>
-              
-              <Card>
-                <CardHeader>
-                  <CardHeading>Step 1: Pre-Generated Seed</CardHeading>
-                  <CardDescription>
-                    Before the raffle begins, we generate a random seed and store its cryptographic hash. This hash is publicly visible throughout the raffle.
-                  </CardDescription>
-                </CardHeader>
-                <CardBody>
-                  <InfoLabel>Hash proof (SHA-256):</InfoLabel>
-                  <CodeBlock>{competition.hashProof}</CodeBlock>
-                </CardBody>
-              </Card>
-              
-              <Card style={{ marginTop: '1.5rem' }}>
-                <CardHeader>
-                  <CardHeading>Step 2: Winner Selection</CardHeading>
-                  <CardDescription>
-                    Once all tickets are sold, we combine the original seed with additional public entropy (e.g., the most recent Bitcoin block hash) to determine the winning ticket.
-                  </CardDescription>
-                </CardHeader>
-                <CardBody>
-                  <InfoLabel>Current status:</InfoLabel>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
-                    <LockIcon />
-                    <span>Seed will be revealed when all tickets are sold</span>
+          {competition.status === 'complete' && competition.winner && (
+            <Card>
+              <CardHeader>
+                <CardHeading>Winner Announcement</CardHeading>
+              </CardHeader>
+              <CardBody>
+                <div style={{ marginBottom: '1rem' }}>
+                  <div style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>Winner:</div>
+                  <div>{competition.winner.username || competition.winner.email}</div>
+                </div>
+                
+                {competition.winningTicket && (
+                  <div style={{ marginBottom: '1rem' }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>Winning Ticket:</div>
+                    <div>#{competition.winningTicket}</div>
                   </div>
-                </CardBody>
-              </Card>
-              
-              <Card style={{ marginTop: '1.5rem' }}>
-                <CardHeader>
-                  <CardHeading>Step 3: Verification</CardHeading>
-                  <CardDescription>
-                    After the draw, we publish the original seed. Anyone can verify that:
-                    <ol style={{ marginTop: '0.5rem', paddingLeft: '1.5rem' }}>
-                      <li>The hash of the seed matches the pre-published hash</li>
-                      <li>The winner was correctly selected using the seed + entropy</li>
-                    </ol>
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-            </FairDrawSection>
+                )}
+                
+                {competition.seed && (
+                  <div>
+                    <div style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>Verification Seed:</div>
+                    <div style={{ 
+                      fontFamily: 'monospace', 
+                      backgroundColor: 'rgba(0,0,0,0.2)', 
+                      padding: '0.5rem',
+                      borderRadius: '0.25rem',
+                      wordBreak: 'break-all'
+                    }}>
+                      {competition.seed}
+                    </div>
+                  </div>
+                )}
+              </CardBody>
+            </Card>
           )}
+          
+          <HowItWorksSection>
+            <Heading2>How It Works</Heading2>
+            <div>
+              <Step>
+                <StepNumber>1</StepNumber>
+                <StepContent>
+                  <StepTitle>Buy Tickets</StepTitle>
+                  <StepDescription>
+                    Purchase tickets for this competition using your credits. 
+                    Each ticket gives you one entry into the draw.
+                  </StepDescription>
+                </StepContent>
+              </Step>
+              
+              <Step>
+                <StepNumber>2</StepNumber>
+                <StepContent>
+                  <StepTitle>Wait for Draw</StepTitle>
+                  <StepDescription>
+                    Once all tickets are sold or the competition end date is reached, 
+                    a winner will be selected using our provably fair system.
+                  </StepDescription>
+                </StepContent>
+              </Step>
+              
+              <Step>
+                <StepNumber>3</StepNumber>
+                <StepContent>
+                  <StepTitle>Claim Your Prize</StepTitle>
+                  <StepDescription>
+                    If you win, you will be notified and can claim your prize through your account.
+                  </StepDescription>
+                </StepContent>
+              </Step>
+            </div>
+          </HowItWorksSection>
         </MainContent>
         
         <Sidebar>
           <Card>
             <CardHeader>
-              <CardHeading>Entry Details</CardHeading>
+              <CardHeading>Competition Status</CardHeading>
+              <CardDescription>
+                {isEnded 
+                  ? 'This competition has ended.' 
+                  : 'Purchase tickets to enter this competition.'}
+              </CardDescription>
             </CardHeader>
+            
             <CardBody>
-              <InfoGrid>
-                <InfoItem>
-                  <InfoLabel>Status</InfoLabel>
-                  <InfoValue>Active</InfoValue>
-                </InfoItem>
-                <InfoItem>
-                  <InfoLabel>Ends In</InfoLabel>
-                  <EndsInValue ending={competition.endsIn.includes('hours')}>{competition.endsIn}</EndsInValue>
-                </InfoItem>
-                <InfoItem>
-                  <InfoLabel>Created On</InfoLabel>
-                  <InfoValue>{competition.createdAt}</InfoValue>
-                </InfoItem>
-                <InfoItem>
-                  <InfoLabel>Max Tickets Per User</InfoLabel>
-                  <InfoValue>{competition.maxTicketsPerUser}</InfoValue>
-                </InfoItem>
-              </InfoGrid>
+              <StatusItem>
+                <StatusLabel>Status</StatusLabel>
+                <StatusValue>
+                  <StatusDot status={competition.status} />
+                  {competition.status === 'active' ? 'Active' : 
+                   competition.status === 'ending' ? 'Ending Soon' : 
+                   competition.status === 'complete' ? 'Completed' : 'Cancelled'}
+                </StatusValue>
+              </StatusItem>
+              
+              <StatusItem>
+                <StatusLabel>Ticket Price</StatusLabel>
+                <StatusValue>{competition.ticketPrice} credits</StatusValue>
+              </StatusItem>
+              
+              <StatusItem>
+                <StatusLabel>Tickets Sold</StatusLabel>
+                <StatusValue>{competition.ticketsSold} / {competition.totalTickets}</StatusValue>
+              </StatusItem>
+              
+              <StatusItem>
+                <StatusLabel>Time Remaining</StatusLabel>
+                <StatusValue>{formattedTimeLeft}</StatusValue>
+              </StatusItem>
               
               <ProgressContainer>
-                <ProgressLabel>Ticket Sales Progress</ProgressLabel>
                 <ProgressBarOuter>
-                  <ProgressBarInner width={`${(competition.ticketsSold / competition.totalTickets) * 100}%`} />
+                  <ProgressBarInner width={`${progressPercentage}%`} />
                 </ProgressBarOuter>
                 <ProgressDetails>
-                  <span>{competition.ticketsSold}/{competition.totalTickets} tickets sold</span>
-                  <span>{Math.round((competition.ticketsSold / competition.totalTickets) * 100)}% filled</span>
+                  <ProgressText>Progress</ProgressText>
+                  <ProgressPercentage>{progressPercentage}%</ProgressPercentage>
                 </ProgressDetails>
               </ProgressContainer>
-              
-              <TicketInfo>
-                <TicketIconWrapper>
-                  <TicketIcon />
-                </TicketIconWrapper>
-                <TicketDetails>
-                  <TicketPrice>1 Ticket = {competition.ticketPrice} Credits</TicketPrice>
-                  <TicketDescription>Buy more tickets to increase your chances</TicketDescription>
-                </TicketDetails>
-                <TicketQuantity>
-                  <QuantityButton onClick={decrementTickets} disabled={ticketCount <= 1}>-</QuantityButton>
-                  <QuantityDisplay>{ticketCount}</QuantityDisplay>
-                  <QuantityButton onClick={incrementTickets} disabled={ticketCount >= competition.maxTicketsPerUser}>+</QuantityButton>
-                </TicketQuantity>
-              </TicketInfo>
             </CardBody>
-            <CardFooter>
-              <PrimaryButton>
-                Buy {ticketCount} Ticket{ticketCount > 1 ? 's' : ''} ({ticketCount * competition.ticketPrice} Credits)
-              </PrimaryButton>
-              <div style={{ fontSize: '0.75rem', textAlign: 'center', marginTop: '0.75rem', opacity: 0.7 }}>
-                You can buy up to {competition.maxTicketsPerUser} tickets
-              </div>
-            </CardFooter>
+            
+            {!isEnded && remainingTickets > 0 && (
+              <CardFooter>
+                <TicketSelector>
+                  <TicketSelectorLabel>Number of Tickets</TicketSelectorLabel>
+                  <TicketSelectorControls>
+                    <TicketButton onClick={decrementTickets} disabled={ticketCount <= 1}>
+                      -
+                    </TicketButton>
+                    <TicketCount>{ticketCount}</TicketCount>
+                    <TicketButton onClick={incrementTickets} 
+                      disabled={ticketCount >= Math.min(
+                        Math.floor((userCredits || 0) / competition.ticketPrice),
+                        remainingTickets
+                      )}>
+                      +
+                    </TicketButton>
+                  </TicketSelectorControls>
+                </TicketSelector>
+                
+                <TotalPrice>
+                  <TotalPriceLabel>Total Price</TotalPriceLabel>
+                  <TotalPriceValue>{ticketCount * competition.ticketPrice} credits</TotalPriceValue>
+                </TotalPrice>
+                
+                {!currentUser ? (
+                  <SignInButton onClick={() => window.navigate('/login')}>
+                    Sign In to Purchase Tickets
+                  </SignInButton>
+                ) : (
+                  <>
+                    <PurchaseButton 
+                      onClick={handleBuyTickets} 
+                      disabled={purchasing || userCredits < ticketCount * competition.ticketPrice}
+                    >
+                      {purchasing ? 'Processing...' : purchaseSuccess ? 'Purchase Complete!' : 'Buy Tickets'}
+                    </PurchaseButton>
+                    
+                    <CreditsInfo>
+                      <CreditsAvailable>
+                        Credits Available: <CreditsValue>{userCredits}</CreditsValue>
+                      </CreditsAvailable>
+                      {userCredits < competition.ticketPrice && (
+                        <AddCreditsButton onClick={() => window.navigate('/profile')}>
+                          Add Credits
+                        </AddCreditsButton>
+                      )}
+                    </CreditsInfo>
+                  </>
+                )}
+              </CardFooter>
+            )}
+            
+            {isEnded && (
+              <CardFooter>
+                <CompletedMessage>
+                  <LockIcon />
+                  <CompletedMessageText>
+                    This competition has ended
+                  </CompletedMessageText>
+                </CompletedMessage>
+              </CardFooter>
+            )}
+            
+            {!isEnded && remainingTickets === 0 && (
+              <CardFooter>
+                <CompletedMessage>
+                  <LockIcon />
+                  <CompletedMessageText>
+                    Sold out! Draw in progress...
+                  </CompletedMessageText>
+                </CompletedMessage>
+              </CardFooter>
+            )}
           </Card>
         </Sidebar>
       </CompetitionLayout>

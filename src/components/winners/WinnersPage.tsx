@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from '@emotion/styled';
+import { getCompletedCompetitions, Competition } from '../../services/firestore';
 
 // Styled components
 const Container = styled.div`
@@ -208,104 +209,86 @@ const ExternalLinkIcon = () => (
   </svg>
 );
 
-// Sample winners data
-const winners = [
-  {
-    id: 1,
-    username: 'DragonSlayer92',
-    date: 'July 10, 2023',
-    competitionTitle: 'Abyssal Whip Giveaway',
-    competitionDescription: 'Legendary whip for the lucky winner!',
-    prize: 'Abyssal Whip + 5M OSRS Gold',
-    prizeValue: '5M Gold',
-    verificationDetails: {
-      seed: '8f6b0a06',
-      hash: '7f83b1657ff1fc53...',
-      blockHash: '00000000000000...',
-      winningTicket: '324 of 500'
-    }
-  },
-  {
-    id: 2,
-    username: 'GodSwordMaster',
-    date: 'July 5, 2023',
-    competitionTitle: 'Armadyl Godsword Raffle',
-    competitionDescription: 'One of the most powerful weapons in OSRS!',
-    prize: 'Armadyl Godsword + 10M OSRS Gold',
-    prizeValue: '10M Gold',
-    verificationDetails: {
-      seed: 'a9cd1e48',
-      hash: '3c6e0b8a9c15224a...',
-      blockHash: '00000000000000...',
-      winningTicket: '712 of 800'
-    }
-  },
-  {
-    id: 3,
-    username: 'RuneWarrior55',
-    date: 'June 27, 2023',
-    competitionTitle: 'Bandos Chest Plate Raffle',
-    competitionDescription: 'Win the coveted Bandos armor piece!',
-    prize: 'Bandos Chest Plate + 15M OSRS Gold',
-    prizeValue: '15M Gold',
-    verificationDetails: {
-      seed: 'c4f31b2a',
-      hash: '5e884898da28047...',
-      blockHash: '00000000000000...',
-      winningTicket: '229 of 600'
-    }
-  },
-  {
-    id: 4,
-    username: 'MagicMaster42',
-    date: 'June 20, 2023',
-    competitionTitle: 'Ancestral Robes Giveaway',
-    competitionDescription: 'The most powerful magic gear in OSRS!',
-    prize: 'Ancestral Robe Set + 25M OSRS Gold',
-    prizeValue: '25M Gold',
-    verificationDetails: {
-      seed: 'd7e94c18',
-      hash: '8d969eef6ecad3c...',
-      blockHash: '00000000000000...',
-      winningTicket: '427 of 750'
-    }
-  },
-  {
-    id: 5,
-    username: 'PKchampion',
-    date: 'June 15, 2023',
-    competitionTitle: 'Dragon Claws Giveaway',
-    competitionDescription: 'The ultimate PK weapon!',
-    prize: 'Dragon Claws + 20M OSRS Gold',
-    prizeValue: '20M Gold',
-    verificationDetails: {
-      seed: 'f2a8e051',
-      hash: '1c383cd30b7c298...',
-      blockHash: '00000000000000...',
-      winningTicket: '142 of 500'
-    }
-  },
-  {
-    id: 6,
-    username: 'Slayer99',
-    date: 'June 8, 2023',
-    competitionTitle: 'Slayer Equipment Bundle',
-    competitionDescription: 'Everything you need for efficient Slayer training!',
-    prize: 'Slayer Bundle + 15M OSRS Gold',
-    prizeValue: '15M Gold',
-    verificationDetails: {
-      seed: 'b3e72d09',
-      hash: '19fa61d75522a4...',
-      blockHash: '00000000000000...',
-      winningTicket: '389 of 600'
-    }
+// Helper function to format timestamp
+const formatDate = (timestamp: any) => {
+  if (!timestamp) return 'N/A';
+  
+  try {
+    const date = new Date(timestamp.seconds * 1000);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  } catch (error) {
+    console.error('Error formatting date', error);
+    return 'N/A';
   }
-];
+};
 
 export default function WinnersPage() {
-  const handleViewCompetition = (id: number) => {
+  const [winners, setWinners] = useState<Competition[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchWinners = async () => {
+      try {
+        const completedCompetitions = await getCompletedCompetitions();
+        setWinners(completedCompetitions);
+      } catch (err) {
+        console.error('Error fetching winners:', err);
+        setError('Failed to load winners. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchWinners();
+  }, []);
+
+  const handleViewCompetition = (id: string) => {
     window.navigate(`/competition/${id}`);
   };
+
+  if (loading) {
+    return (
+      <Container>
+        <PageHeader>
+          <Heading1>Recent Winners</Heading1>
+          <Description>
+            Loading winner information...
+          </Description>
+        </PageHeader>
+      </Container>
+    );
+  }
+
+  if (error) {
+    return (
+      <Container>
+        <PageHeader>
+          <Heading1>Recent Winners</Heading1>
+          <Description style={{ color: 'red' }}>
+            {error}
+          </Description>
+        </PageHeader>
+      </Container>
+    );
+  }
+
+  if (winners.length === 0) {
+    return (
+      <Container>
+        <PageHeader>
+          <Heading1>Recent Winners</Heading1>
+          <Description>
+            No completed competitions yet. Check back soon!
+          </Description>
+        </PageHeader>
+      </Container>
+    );
+  }
 
   return (
     <Container>
@@ -315,58 +298,66 @@ export default function WinnersPage() {
           Check out the most recent winners from our provably fair raffles. All drawings are transparent and verifiable through our blockchain-based verification system.
         </Description>
       </PageHeader>
-      
+
       <WinnersGrid>
-        {winners.map(winner => (
-          <WinnerCard key={winner.id}>
+        {winners.map(competition => (
+          <WinnerCard key={competition.id}>
             <WinnerCardHeader>
-              <WinnerUsername>{winner.username}</WinnerUsername>
-              <WinnerDate>Won on {winner.date}</WinnerDate>
-              <PrizeLabel>{winner.prizeValue}</PrizeLabel>
+              <WinnerUsername>
+                {competition.winner?.username || competition.winner?.email || 'Anonymous'}
+              </WinnerUsername>
+              <WinnerDate>Won on {formatDate(competition.completedAt)}</WinnerDate>
+              <PrizeLabel>{competition.prizeValue}</PrizeLabel>
             </WinnerCardHeader>
-            
+
             <WinnerCardBody>
-              <CompetitionTitle>{winner.competitionTitle}</CompetitionTitle>
-              <CompetitionDescription>{winner.competitionDescription}</CompetitionDescription>
-              
+              <CompetitionTitle>{competition.title}</CompetitionTitle>
+              <CompetitionDescription>{competition.description}</CompetitionDescription>
+
               <PrizeDetails>
                 <PrizeTitle>Prize Won:</PrizeTitle>
-                <PrizeValue>{winner.prize}</PrizeValue>
+                <PrizeValue>{competition.prize}</PrizeValue>
               </PrizeDetails>
-              
+
               <VerificationContainer>
                 <VerificationHeading>
-                  <VerifiedIcon />
-                  Verified Fair Draw
+                  <VerifiedIcon /> Verified Fair Draw
                 </VerificationHeading>
-                
                 <VerificationDetails>
-                  <VerificationItem>
-                    <VerificationLabel>Seed:</VerificationLabel>
-                    <VerificationValue>{winner.verificationDetails.seed}</VerificationValue>
-                  </VerificationItem>
-                  <VerificationItem>
-                    <VerificationLabel>Hash:</VerificationLabel>
-                    <VerificationValue>{winner.verificationDetails.hash}</VerificationValue>
-                  </VerificationItem>
-                  <VerificationItem>
-                    <VerificationLabel>Block Hash:</VerificationLabel>
-                    <VerificationValue>{winner.verificationDetails.blockHash}</VerificationValue>
-                  </VerificationItem>
-                  <VerificationItem>
-                    <VerificationLabel>Winning Ticket:</VerificationLabel>
-                    <VerificationValue>{winner.verificationDetails.winningTicket}</VerificationValue>
-                  </VerificationItem>
+                  {competition.seed && (
+                    <VerificationItem>
+                      <VerificationLabel>Seed:</VerificationLabel>
+                      <VerificationValue>{competition.seed.substring(0, 10)}...</VerificationValue>
+                    </VerificationItem>
+                  )}
+                  {competition.blockHash && (
+                    <VerificationItem>
+                      <VerificationLabel>Block Hash:</VerificationLabel>
+                      <VerificationValue>{competition.blockHash.substring(0, 10)}...</VerificationValue>
+                    </VerificationItem>
+                  )}
+                  {competition.winningTicket && (
+                    <VerificationItem>
+                      <VerificationLabel>Winning Ticket:</VerificationLabel>
+                      <VerificationValue>#{competition.winningTicket} of {competition.totalTickets}</VerificationValue>
+                    </VerificationItem>
+                  )}
                 </VerificationDetails>
-                
-                <VerificationLink href="#" onClick={(e) => e.preventDefault()}>
-                  Verify on blockchain <ExternalLinkIcon />
+                <VerificationLink href="#" onClick={(e) => {
+                  e.preventDefault();
+                  alert('Verification details: ' + JSON.stringify({
+                    seed: competition.seed,
+                    blockHash: competition.blockHash,
+                    winningTicket: competition.winningTicket
+                  }, null, 2));
+                }}>
+                  View full verification details <ExternalLinkIcon />
                 </VerificationLink>
-                
-                <SecondaryButton onClick={() => handleViewCompetition(winner.id)}>
-                  View Competition Details
-                </SecondaryButton>
               </VerificationContainer>
+
+              <SecondaryButton onClick={() => competition.id && handleViewCompetition(competition.id)}>
+                View Competition Details
+              </SecondaryButton>
             </WinnerCardBody>
           </WinnerCard>
         ))}

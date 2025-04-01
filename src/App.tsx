@@ -1,5 +1,7 @@
 import styled from '@emotion/styled';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { getActiveCompetitions, buyTicket, Competition as FirestoreCompetition } from './services/firestore';
+import { useAuth } from './context/AuthContext';
 
 // Styled components
 const Container = styled.div`
@@ -446,15 +448,104 @@ const ArrowRightSvg = () => (
   </svg>
 );
 
+// Helper function to format timestamp
+const formatTimeLeft = (endsAt: any) => {
+  if (!endsAt) return 'N/A';
+  
+  try {
+    const endDate = new Date(endsAt.seconds * 1000);
+    const now = new Date();
+    
+    // If already ended
+    if (endDate <= now) {
+      return 'Ended';
+    }
+    
+    const diffMs = endDate.getTime() - now.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (diffDays > 0) {
+      return `${diffDays} days`;
+    }
+    
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    if (diffHours > 0) {
+      return `${diffHours} hours`;
+    }
+    
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    return `${diffMinutes} minutes`;
+  } catch (error) {
+    console.error('Error formatting time', error);
+    return 'N/A';
+  }
+};
+
 export default function App() {
   const [ticketCount, setTicketCount] = useState(1);
+  const [competitions, setCompetitions] = useState<FirestoreCompetition[]>([]);
+  const [featuredCompetition, setFeaturedCompetition] = useState<FirestoreCompetition | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [purchasing, setPurchasing] = useState(false);
+  const [purchaseSuccess, setPurchaseSuccess] = useState(false);
+  const { currentUser, userCredits, setUserCredits } = useAuth();
+
+  // Fetch active competitions
+  useEffect(() => {
+    const fetchCompetitions = async () => {
+      try {
+        setLoading(true);
+        const activeComps = await getActiveCompetitions();
+        
+        // Sort by ticketsSold / totalTickets to get most popular
+        const sortedComps = [...activeComps].sort(
+          (a, b) => (b.ticketsSold / b.totalTickets) - (a.ticketsSold / a.totalTickets)
+        );
+        
+        // Set featured competition to the most popular one
+        if (sortedComps.length > 0) {
+          setFeaturedCompetition(sortedComps[0]);
+          
+          // Remove the featured competition from the rest
+          setCompetitions(sortedComps.slice(1).slice(0, 3)); // Take up to 3 other competitions
+        } else {
+          setFeaturedCompetition(null);
+          setCompetitions([]);
+        }
+        
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching competitions:', err);
+        setError('Failed to load competitions. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchCompetitions();
+  }, []);
 
   const incrementTickets = () => {
-    setTicketCount(prev => prev + 1);
+    // Limit by user's credits and available tickets
+    if (featuredCompetition) {
+      const maxTickets = Math.min(
+        Math.floor((userCredits || 0) / featuredCompetition.ticketPrice),
+        featuredCompetition.totalTickets - featuredCompetition.ticketsSold
+      );
+      
+      if (ticketCount < maxTickets) {
+        setTicketCount(ticketCount + 1);
+      }
+    } else {
+      setTicketCount(prev => prev + 1);
+    }
   };
 
   const decrementTickets = () => {
-    setTicketCount(prev => prev > 1 ? prev - 1 : 1);
+    if (ticketCount > 1) {
+      setTicketCount(ticketCount - 1);
+    }
   };
   
   const handleBrowseCompetitions = () => {
@@ -465,12 +556,68 @@ export default function App() {
     window.navigate('/how-it-works');
   };
   
-  const handleViewCompetition = (id: number) => {
+  const handleViewCompetition = (id: string) => {
     window.navigate(`/competition/${id}`);
   };
   
   const handleViewAllCompetitions = () => {
     window.navigate('/competitions');
+  };
+
+  const handleBuyTickets = async () => {
+    if (!currentUser || !featuredCompetition || !featuredCompetition.id) {
+      if (!currentUser) {
+        window.navigate('/login');
+      }
+      return;
+    }
+    
+    const totalCost = ticketCount * featuredCompetition.ticketPrice;
+    
+    if (userCredits < totalCost) {
+      alert('Not enough credits to purchase tickets.');
+      return;
+    }
+    
+    if (featuredCompetition.ticketsSold + ticketCount > featuredCompetition.totalTickets) {
+      alert('Not enough tickets available.');
+      return;
+    }
+    
+    setPurchasing(true);
+    
+    try {
+      // Buy tickets one by one to get unique ticket numbers
+      for (let i = 0; i < ticketCount; i++) {
+        await buyTicket({
+          competitionId: featuredCompetition.id,
+          userId: currentUser.uid,
+          ticketNumber: featuredCompetition.ticketsSold + i + 1
+        });
+      }
+      
+      // Update local competition state
+      setFeaturedCompetition({
+        ...featuredCompetition,
+        ticketsSold: featuredCompetition.ticketsSold + ticketCount
+      });
+      
+      // Update user credits
+      setUserCredits(userCredits - totalCost);
+      
+      // Reset ticket count and show success message
+      setTicketCount(1);
+      setPurchaseSuccess(true);
+      
+      setTimeout(() => {
+        setPurchaseSuccess(false);
+      }, 3000);
+    } catch (err) {
+      console.error('Error purchasing tickets:', err);
+      alert('Failed to purchase tickets. Please try again.');
+    } finally {
+      setPurchasing(false);
+    }
   };
 
   return (
@@ -499,65 +646,110 @@ export default function App() {
 
       {/* Featured Competition */}
       <Section>
-        <FeaturedCompetition>
-          <CompetitionContent>
-            <CompetitionDetails>
-              <BadgeContainer>
-                <Badge variant="featured">
-                  Featured
-                </Badge>
-                <Badge variant="primary">
-                  Ends in 3 days
-                </Badge>
-                <Badge variant="limited">
-                  Limited Entries
-                </Badge>
-              </BadgeContainer>
-              <Heading2>Dragon Slayer Challenge</Heading2>
-              <Description>
-                Enter this raffle for a chance to win the ultimate Dragon gear set and 100M OSRS Gold.
-                The winner will be selected randomly when all tickets are sold.
-              </Description>
-              
-              {/* Ticket Progress */}
-              <ProgressContainer>
-                <PrizePoolLabel>Ticket Sales Progress</PrizePoolLabel>
-                <ProgressBarOuter>
-                  <ProgressBarInner width="68%" />
-                </ProgressBarOuter>
-                <ProgressDetails>
-                  <span>683/1000 tickets sold</span>
-                  <span>68% filled</span>
-                </ProgressDetails>
-              </ProgressContainer>
-              
-              <div style={{ marginBottom: '1.5rem' }}>
-                <PrizePoolLabel>Prize Pool:</PrizePoolLabel>
-                <PrizePoolValue>100M OSRS Gold + Dragon Gear Set</PrizePoolValue>
-              </div>
-              
-              {/* Ticket Purchase UI */}
-              <TicketInfo>
-                <TicketIcon>
-                  <TicketSvg />
-                </TicketIcon>
-                <TicketDetails>
-                  <TicketPrice>1 Ticket = 5 Credits</TicketPrice>
-                  <TicketDescription>Buy more tickets to increase your chances</TicketDescription>
-                </TicketDetails>
-                <TicketQuantity>
-                  <QuantityButton onClick={decrementTickets}>-</QuantityButton>
-                  <QuantityDisplay>{ticketCount}</QuantityDisplay>
-                  <QuantityButton onClick={incrementTickets}>+</QuantityButton>
-                </TicketQuantity>
-              </TicketInfo>
-              
-              <PrimaryButton onClick={() => handleViewCompetition(1)}>
-                Buy {ticketCount} Ticket{ticketCount > 1 ? 's' : ''} ({ticketCount * 5} Credits)
-              </PrimaryButton>
-            </CompetitionDetails>
-          </CompetitionContent>
-        </FeaturedCompetition>
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '2rem' }}>Loading competitions...</div>
+        ) : error ? (
+          <div style={{ textAlign: 'center', padding: '2rem', color: 'red' }}>{error}</div>
+        ) : !featuredCompetition ? (
+          <div style={{ textAlign: 'center', padding: '2rem' }}>No active competitions found.</div>
+        ) : (
+          <FeaturedCompetition>
+            <CompetitionContent>
+              <CompetitionDetails>
+                <BadgeContainer>
+                  <Badge variant="featured">
+                    Featured
+                  </Badge>
+                  <Badge variant="primary">
+                    Ends in {formatTimeLeft(featuredCompetition.endsAt)}
+                  </Badge>
+                  {featuredCompetition.status === 'ending' && (
+                    <Badge variant="limited">
+                      Limited Time
+                    </Badge>
+                  )}
+                </BadgeContainer>
+                <Heading2>{featuredCompetition.title}</Heading2>
+                <Description>
+                  {featuredCompetition.description}
+                </Description>
+                
+                {/* Ticket Progress */}
+                <ProgressContainer>
+                  <PrizePoolLabel>Ticket Sales Progress</PrizePoolLabel>
+                  <ProgressBarOuter>
+                    <ProgressBarInner 
+                      width={`${Math.min(Math.round((featuredCompetition.ticketsSold / featuredCompetition.totalTickets) * 100), 100)}%`} 
+                    />
+                  </ProgressBarOuter>
+                  <ProgressDetails>
+                    <span>{featuredCompetition.ticketsSold}/{featuredCompetition.totalTickets} tickets sold</span>
+                    <span>{Math.min(Math.round((featuredCompetition.ticketsSold / featuredCompetition.totalTickets) * 100), 100)}% filled</span>
+                  </ProgressDetails>
+                </ProgressContainer>
+                
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <PrizePoolLabel>Prize Pool:</PrizePoolLabel>
+                  <PrizePoolValue>{featuredCompetition.prize}</PrizePoolValue>
+                </div>
+                
+                {/* Ticket Purchase UI */}
+                <TicketInfo>
+                  <TicketIcon>
+                    <TicketSvg />
+                  </TicketIcon>
+                  <TicketDetails>
+                    <TicketPrice>1 Ticket = {featuredCompetition.ticketPrice} Credits</TicketPrice>
+                    <TicketDescription>Buy more tickets to increase your chances</TicketDescription>
+                  </TicketDetails>
+                  <TicketQuantity>
+                    <QuantityButton 
+                      onClick={decrementTickets}
+                      disabled={ticketCount <= 1}
+                    >-</QuantityButton>
+                    <QuantityDisplay>{ticketCount}</QuantityDisplay>
+                    <QuantityButton 
+                      onClick={incrementTickets}
+                      disabled={ticketCount >= Math.min(
+                        Math.floor((userCredits || 0) / featuredCompetition.ticketPrice),
+                        featuredCompetition.totalTickets - featuredCompetition.ticketsSold
+                      )}
+                    >+</QuantityButton>
+                  </TicketQuantity>
+                </TicketInfo>
+                
+                <PrimaryButton 
+                  onClick={!currentUser ? () => window.navigate('/login') : handleBuyTickets}
+                  disabled={purchasing || (!!currentUser && (userCredits || 0) < ticketCount * featuredCompetition.ticketPrice)}
+                >
+                  {!currentUser 
+                    ? 'Sign In to Buy Tickets' 
+                    : purchasing 
+                      ? 'Processing...' 
+                      : purchaseSuccess 
+                        ? 'Purchase Complete!' 
+                        : `Buy ${ticketCount} Ticket${ticketCount > 1 ? 's' : ''} (${ticketCount * featuredCompetition.ticketPrice} Credits)`
+                  }
+                </PrimaryButton>
+                
+                {currentUser && userCredits < featuredCompetition.ticketPrice && (
+                  <div style={{ marginTop: '0.75rem', textAlign: 'center', fontSize: '0.875rem' }}>
+                    <a 
+                      href="#" 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        window.navigate('/profile');
+                      }}
+                      style={{ color: 'hsl(var(--primary))', textDecoration: 'none' }}
+                    >
+                      Add more credits to your account
+                    </a>
+                  </div>
+                )}
+              </CompetitionDetails>
+            </CompetitionContent>
+          </FeaturedCompetition>
+        )}
       </Section>
 
       {/* Active Competitions */}
@@ -569,86 +761,64 @@ export default function App() {
             <ArrowRightSvg />
           </ViewAllButton>
         </SectionHeader>
-        <CompetitionGrid>
-          {[
-            { 
-              id: 2, 
-              title: 'Goblin Slayer Raffle', 
-              description: 'Win 10M OSRS Gold in this easy entry raffle.',
-              difficulty: 'easy' as const, 
-              prize: '10M OSRS Gold',
-              sold: 450,
-              total: 500,
-              daysLeft: 5
-            },
-            { 
-              id: 3, 
-              title: 'Barrows Gear Raffle', 
-              description: 'Complete set of Barrows equipment up for grabs!', 
-              difficulty: 'medium' as const, 
-              prize: 'Full Barrows Set',
-              sold: 320,
-              total: 750,
-              daysLeft: 7
-            },
-            { 
-              id: 4, 
-              title: 'Bandos Raffle', 
-              description: 'Win the coveted Bandos armor set in this limited raffle.', 
-              difficulty: 'hard' as const, 
-              prize: 'Bandos Armor Set + 25M Gold',
-              sold: 124,
-              total: 300,
-              daysLeft: 4
-            }
-          ].map((competition) => (
-            <CompetitionCard key={competition.id} onClick={() => handleViewCompetition(competition.id)}>
-              <CardImageContainer>
-                <IconContainer>
-                  <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" color="rgb(0, 174, 239)">
-                    <path d="M12 22a10 10 0 1 1 0-20 10 10 0 0 1 0 20zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm1-8.41l2.54 2.53a1 1 0 0 1-1.42 1.42L11.3 12.7A1 1 0 0 1 11 12V8a1 1 0 0 1 2 0v3.59z"/>
-                  </svg>
-                </IconContainer>
-              </CardImageContainer>
-              <CardContent>
-                <CardBadgeContainer>
-                  <DifficultyBadge difficulty={competition.difficulty}>
-                    {competition.difficulty.charAt(0).toUpperCase() + competition.difficulty.slice(1)}
-                  </DifficultyBadge>
-                  <TimeBadge>
-                    Ends in {competition.daysLeft} days
-                  </TimeBadge>
-                </CardBadgeContainer>
-                <Heading3>{competition.title}</Heading3>
-                <CardDescription>
-                  {competition.description}
-                </CardDescription>
-                
-                {/* Ticket Progress */}
-                <ProgressContainer>
-                  <ProgressBarOuter>
-                    <ProgressBarInner width={`${(competition.sold / competition.total) * 100}%`} />
-                  </ProgressBarOuter>
-                  <ProgressDetails>
-                    <span>{competition.sold}/{competition.total} tickets</span>
-                    <span>{Math.round((competition.sold / competition.total) * 100)}%</span>
-                  </ProgressDetails>
-                </ProgressContainer>
-                
-                <div style={{ marginBottom: '1rem' }}>
-                  <CardPrizeLabel>Prize Pool:</CardPrizeLabel>
-                  <CardPrizeValue>{competition.prize}</CardPrizeValue>
-                </div>
-                <EnterButton onClick={(e) => {
-                  e.stopPropagation();
-                  handleViewCompetition(competition.id);
-                }}>
-                  Enter Raffle
-                </EnterButton>
-              </CardContent>
-            </CompetitionCard>
-          ))}
-        </CompetitionGrid>
+        
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '2rem' }}>Loading competitions...</div>
+        ) : error ? (
+          <div style={{ textAlign: 'center', padding: '2rem', color: 'red' }}>{error}</div>
+        ) : competitions.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '2rem' }}>No other active competitions found.</div>
+        ) : (
+          <CompetitionGrid>
+            {competitions.map((competition) => (
+              <CompetitionCard key={competition.id} onClick={() => competition.id && handleViewCompetition(competition.id)}>
+                <CardImageContainer>
+                  <IconContainer>
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" color="rgb(0, 174, 239)">
+                      <path d="M12 22a10 10 0 1 1 0-20 10 10 0 0 1 0 20zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm1-8.41l2.54 2.53a1 1 0 0 1-1.42 1.42L11.3 12.7A1 1 0 0 1 11 12V8a1 1 0 0 1 2 0v3.59z"/>
+                    </svg>
+                  </IconContainer>
+                </CardImageContainer>
+                <CardContent>
+                  <CardBadgeContainer>
+                    <DifficultyBadge difficulty={competition.difficulty}>
+                      {competition.difficulty.charAt(0).toUpperCase() + competition.difficulty.slice(1)}
+                    </DifficultyBadge>
+                    <TimeBadge>
+                      Ends in {formatTimeLeft(competition.endsAt)}
+                    </TimeBadge>
+                  </CardBadgeContainer>
+                  <Heading3>{competition.title}</Heading3>
+                  <CardDescription>
+                    {competition.description}
+                  </CardDescription>
+                  
+                  {/* Ticket Progress */}
+                  <ProgressContainer>
+                    <ProgressBarOuter>
+                      <ProgressBarInner width={`${Math.min(Math.round((competition.ticketsSold / competition.totalTickets) * 100), 100)}%`} />
+                    </ProgressBarOuter>
+                    <ProgressDetails>
+                      <span>{competition.ticketsSold}/{competition.totalTickets} tickets</span>
+                      <span>{Math.min(Math.round((competition.ticketsSold / competition.totalTickets) * 100), 100)}%</span>
+                    </ProgressDetails>
+                  </ProgressContainer>
+                  
+                  <div style={{ marginBottom: '1rem' }}>
+                    <CardPrizeLabel>Prize Pool:</CardPrizeLabel>
+                    <CardPrizeValue>{competition.prize}</CardPrizeValue>
+                  </div>
+                  <EnterButton onClick={(e) => {
+                    e.stopPropagation();
+                    competition.id && handleViewCompetition(competition.id);
+                  }}>
+                    Enter Raffle
+                  </EnterButton>
+                </CardContent>
+              </CompetitionCard>
+            ))}
+          </CompetitionGrid>
+        )}
       </Section>
 
       {/* How It Works */}

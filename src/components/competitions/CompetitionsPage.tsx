@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from '@emotion/styled';
+import { getActiveCompetitions, getCompletedCompetitions, Competition as FirestoreCompetition } from '../../services/firestore';
 
 // Styled components
 const Container = styled.div`
@@ -355,6 +356,39 @@ const SearchIcon = () => (
   </svg>
 );
 
+// Format a Firestore timestamp for display
+const formatTimeLeft = (endsAt: any) => {
+  if (!endsAt) return 'N/A';
+  
+  try {
+    const endDate = new Date(endsAt.seconds * 1000);
+    const now = new Date();
+    
+    // If already ended
+    if (endDate <= now) {
+      return 'Ended';
+    }
+    
+    const diffMs = endDate.getTime() - now.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (diffDays > 0) {
+      return `${diffDays} days`;
+    }
+    
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    if (diffHours > 0) {
+      return `${diffHours} hours`;
+    }
+    
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    return `${diffMinutes} minutes`;
+  } catch (error) {
+    console.error('Error formatting time', error);
+    return 'N/A';
+  }
+};
+
 // Types
 type CompetitionStatus = 'active' | 'ending' | 'complete';
 type CompetitionDifficulty = 'easy' | 'medium' | 'hard';
@@ -376,322 +410,208 @@ interface Competition {
   seed?: string;
 }
 
-// Sample data
-const sampleCompetitions: Competition[] = [
-  {
-    id: 1,
-    title: 'Dragon Slayer Challenge',
-    description: 'Win the ultimate Dragon gear set and 100M OSRS Gold.',
-    prize: 'Dragon Gear + 100M OSRS Gold',
-    prizeValue: '100M OSRS Gold',
-    status: 'active',
-    difficulty: 'hard',
-    ticketPrice: 5,
-    ticketsSold: 683,
-    totalTickets: 1000,
-    endsIn: '3 days'
-  },
-  {
-    id: 2,
-    title: 'Goblin Slayer Raffle',
-    description: 'Win 10M OSRS Gold in this easy entry raffle.',
-    prize: '10M OSRS Gold',
-    prizeValue: '10M OSRS Gold',
-    status: 'active',
-    difficulty: 'easy',
-    ticketPrice: 2,
-    ticketsSold: 450,
-    totalTickets: 500,
-    endsIn: '5 days'
-  },
-  {
-    id: 3,
-    title: 'Barrows Gear Raffle',
-    description: 'Complete set of Barrows equipment up for grabs!',
-    prize: 'Full Barrows Set',
-    prizeValue: 'Barrows Set',
-    status: 'ending',
-    difficulty: 'medium',
-    ticketPrice: 3,
-    ticketsSold: 720,
-    totalTickets: 750,
-    endsIn: '12 hours'
-  },
-  {
-    id: 4,
-    title: 'Bandos Raffle',
-    description: 'Win the coveted Bandos armor set in this limited raffle.',
-    prize: 'Bandos Armor Set + 25M Gold',
-    prizeValue: 'Bandos Set + 25M',
-    status: 'active',
-    difficulty: 'hard',
-    ticketPrice: 4,
-    ticketsSold: 124,
-    totalTickets: 300,
-    endsIn: '4 days'
-  },
-  {
-    id: 5,
-    title: 'Abyssal Whip Giveaway',
-    description: 'Legendary whip for the lucky winner!',
-    prize: 'Abyssal Whip + 5M OSRS Gold',
-    prizeValue: 'Whip + 5M Gold',
-    status: 'complete',
-    difficulty: 'medium',
-    ticketPrice: 2,
-    ticketsSold: 500,
-    totalTickets: 500,
-    endsIn: 'Completed',
-    completedAt: '2 days ago',
-    winner: 'DragonSlayer92',
-    seed: '7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069'
-  },
-  {
-    id: 6,
-    title: 'Armadyl Godsword Raffle',
-    description: 'One of the most powerful weapons in OSRS!',
-    prize: 'Armadyl Godsword + 10M OSRS Gold',
-    prizeValue: 'AGS + 10M Gold',
-    status: 'complete',
-    difficulty: 'hard',
-    ticketPrice: 5,
-    ticketsSold: 800,
-    totalTickets: 800,
-    endsIn: 'Completed',
-    completedAt: '5 days ago',
-    winner: 'GodSwordMaster',
-    seed: '3c6e0b8a9c15224a8228b9a98ca1531d5f3d8d474c9c7b1bc37ea1c77d3f6db7'
-  }
-];
-
 export default function CompetitionsPage() {
   const [filter, setFilter] = useState<'all' | 'active' | 'ending' | 'completed'>('all');
-  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'price-low' | 'price-high'>('newest');
+  const [sortBy, setSortBy] = useState<'newest' | 'popular' | 'priceAsc' | 'priceDesc'>('newest');
+  const [competitions, setCompetitions] = useState<FirestoreCompetition[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Filter competitions based on selected filter
-  const filteredCompetitions = sampleCompetitions.filter(comp => {
-    if (filter === 'all') return true;
-    if (filter === 'active') return comp.status === 'active';
-    if (filter === 'ending') return comp.status === 'ending';
-    if (filter === 'completed') return comp.status === 'complete';
-    return true;
-  });
-
-  // Sort competitions based on selected sort
-  const sortedCompetitions = [...filteredCompetitions].sort((a, b) => {
-    if (sortBy === 'newest') return b.id - a.id;
-    if (sortBy === 'oldest') return a.id - b.id;
-    if (sortBy === 'price-low') return a.ticketPrice - b.ticketPrice;
-    if (sortBy === 'price-high') return b.ticketPrice - a.ticketPrice;
-    return 0;
-  });
-
-  // Group competitions by status for display
-  const activeCompetitions = sortedCompetitions.filter(comp => comp.status === 'active' || comp.status === 'ending');
-  const completedCompetitions = sortedCompetitions.filter(comp => comp.status === 'complete');
-
-  const handleCompetitionClick = (id: number) => {
-    window.navigate(`/competition/${id}`);
+  // Fetch competitions from Firestore
+  useEffect(() => {
+    const fetchCompetitions = async () => {
+      setLoading(true);
+      try {
+        let competitionsData: FirestoreCompetition[] = [];
+        
+        if (filter === 'completed') {
+          competitionsData = await getCompletedCompetitions();
+        } else {
+          // For 'all', 'active', or 'ending' filters, start with all active competitions
+          const activeCompetitions = await getActiveCompetitions();
+          
+          // Then filter as needed
+          if (filter === 'active') {
+            competitionsData = activeCompetitions.filter(comp => comp.status === 'active');
+          } else if (filter === 'ending') {
+            competitionsData = activeCompetitions.filter(comp => comp.status === 'ending');
+          } else {
+            // 'all' filter
+            competitionsData = activeCompetitions;
+          }
+        }
+        
+        // Sort competitions
+        competitionsData = sortCompetitions(competitionsData, sortBy);
+        
+        setCompetitions(competitionsData);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching competitions:', err);
+        setError('Failed to load competitions. Please try again later.');
+        setCompetitions([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchCompetitions();
+  }, [filter, sortBy]);
+  
+  // Function to sort competitions based on selected sort option
+  const sortCompetitions = (comps: FirestoreCompetition[], sort: string) => {
+    switch (sort) {
+      case 'newest':
+        return [...comps].sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+      case 'popular':
+        return [...comps].sort((a, b) => (b.ticketsSold / b.totalTickets) - (a.ticketsSold / a.totalTickets));
+      case 'priceAsc':
+        return [...comps].sort((a, b) => a.ticketPrice - b.ticketPrice);
+      case 'priceDesc':
+        return [...comps].sort((a, b) => b.ticketPrice - a.ticketPrice);
+      default:
+        return comps;
+    }
   };
 
+  const handleCompetitionClick = (id: string) => {
+    if (typeof window !== 'undefined') {
+      window.navigate(`/competition/${id}`);
+    }
+  };
+  
   return (
     <Container>
       <PageHeader>
-        <Heading1>All Raffles</Heading1>
+        <Heading1>Browse Competitions</Heading1>
         <Description>
-          Browse all active and completed raffles. Enter for a chance to win epic RuneScape items and gold.
+          Explore available competitions, buy tickets, and win awesome prizes!
         </Description>
-        
-        <FiltersContainer>
-          <FilterButton 
-            active={filter === 'all'} 
-            onClick={() => setFilter('all')}
-          >
-            All Raffles
-          </FilterButton>
-          <FilterButton 
-            active={filter === 'active'} 
-            onClick={() => setFilter('active')}
-          >
-            Active
-          </FilterButton>
-          <FilterButton 
-            active={filter === 'ending'} 
-            onClick={() => setFilter('ending')}
-          >
-            Ending Soon
-          </FilterButton>
-          <FilterButton 
-            active={filter === 'completed'} 
-            onClick={() => setFilter('completed')}
-          >
-            Completed
-          </FilterButton>
-        </FiltersContainer>
       </PageHeader>
       
-      {/* Active Competitions */}
-      {(filter === 'all' || filter === 'active' || filter === 'ending') && activeCompetitions.length > 0 && (
-        <>
-          <CompetitionListHeader>
-            <ListHeading>Active Raffles</ListHeading>
-            <SortContainer>
-              <SortLabel>Sort by:</SortLabel>
-              <Select 
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-              >
-                <option value="newest">Newest</option>
-                <option value="oldest">Oldest</option>
-                <option value="price-low">Price: Low to High</option>
-                <option value="price-high">Price: High to Low</option>
-              </Select>
-            </SortContainer>
-          </CompetitionListHeader>
-          
-          <CompetitionGrid>
-            {activeCompetitions.map(competition => (
-              <CompetitionCard key={competition.id} onClick={() => handleCompetitionClick(competition.id)}>
-                <CardImageContainer>
-                  <CardBadges>
-                    <StatusBadge status={competition.status}>
-                      {competition.status === 'ending' ? 'Ending Soon' : 'Active'}
-                    </StatusBadge>
-                    <DifficultyBadge difficulty={competition.difficulty}>
-                      {competition.difficulty.charAt(0).toUpperCase() + competition.difficulty.slice(1)}
-                    </DifficultyBadge>
-                  </CardBadges>
-                  <IconContainer>
-                    <TimerIcon />
-                  </IconContainer>
-                </CardImageContainer>
+      <FiltersContainer>
+        <FilterButton 
+          active={filter === 'all'} 
+          onClick={() => setFilter('all')}
+        >
+          All Competitions
+        </FilterButton>
+        <FilterButton 
+          active={filter === 'active'} 
+          onClick={() => setFilter('active')}
+        >
+          Active
+        </FilterButton>
+        <FilterButton 
+          active={filter === 'ending'} 
+          onClick={() => setFilter('ending')}
+        >
+          Ending Soon
+        </FilterButton>
+        <FilterButton 
+          active={filter === 'completed'} 
+          onClick={() => setFilter('completed')}
+        >
+          Completed
+        </FilterButton>
+      </FiltersContainer>
+      
+      <Separator />
+      
+      <CompetitionListHeader>
+        <ListHeading>
+          {filter === 'all' ? 'All Competitions' : 
+           filter === 'active' ? 'Active Competitions' :
+           filter === 'ending' ? 'Ending Soon' :
+           'Completed Competitions'}
+        </ListHeading>
+        
+        <SortContainer>
+          <SortLabel>Sort by:</SortLabel>
+          <Select 
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as any)}
+          >
+            <option value="newest">Newest</option>
+            <option value="popular">Most Popular</option>
+            <option value="priceAsc">Price: Low to High</option>
+            <option value="priceDesc">Price: High to Low</option>
+          </Select>
+        </SortContainer>
+      </CompetitionListHeader>
+      
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '2rem' }}>Loading competitions...</div>
+      ) : error ? (
+        <div style={{ textAlign: 'center', padding: '2rem', color: 'red' }}>{error}</div>
+      ) : competitions.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '2rem' }}>No competitions found for the selected filter.</div>
+      ) : (
+        <CompetitionGrid>
+          {competitions.map((competition) => (
+            <CompetitionCard 
+              key={competition.id} 
+              onClick={() => handleCompetitionClick(competition.id!)}
+            >
+              <CardImageContainer>
+                <IconContainer>
+                  <TimerIcon />
+                </IconContainer>
+                <CardBadges>
+                  <StatusBadge status={competition.status as 'active' | 'ending' | 'complete'}>
+                    {competition.status}
+                  </StatusBadge>
+                  <DifficultyBadge difficulty={competition.difficulty}>
+                    {competition.difficulty}
+                  </DifficultyBadge>
+                </CardBadges>
+              </CardImageContainer>
+              
+              <CardContent>
+                <PrizeValue>{competition.prizeValue}</PrizeValue>
+                <CardTitle>{competition.title}</CardTitle>
+                <CardDescription>{competition.description}</CardDescription>
                 
-                <CardContent>
-                  <PrizeValue>{competition.prizeValue}</PrizeValue>
-                  <CardTitle>{competition.title}</CardTitle>
-                  <CardDescription>{competition.description}</CardDescription>
-                  
-                  <ProgressContainer>
-                    <ProgressBarOuter>
-                      <ProgressBarInner width={`${(competition.ticketsSold / competition.totalTickets) * 100}%`} />
-                    </ProgressBarOuter>
-                    <ProgressDetails>
-                      <span>{competition.ticketsSold}/{competition.totalTickets} tickets</span>
-                      <span>{Math.round((competition.ticketsSold / competition.totalTickets) * 100)}%</span>
-                    </ProgressDetails>
-                  </ProgressContainer>
-                  
-                  <CardFooter>
-                    <PriceContainer>
-                      <PriceLabel>Ticket Price</PriceLabel>
-                      <Price>{competition.ticketPrice} Credits</Price>
-                    </PriceContainer>
-                    <TimeContainer>
-                      <TimeLabel>Ends In</TimeLabel>
-                      <Time color={competition.status === 'ending' ? 'rgb(245, 158, 11)' : undefined}>
-                        {competition.endsIn}
-                      </Time>
-                    </TimeContainer>
-                  </CardFooter>
-                </CardContent>
-              </CompetitionCard>
-            ))}
-          </CompetitionGrid>
-        </>
-      )}
-      
-      {/* Separator between sections */}
-      {activeCompetitions.length > 0 && completedCompetitions.length > 0 && 
-        (filter === 'all') && (
-        <Separator />
-      )}
-      
-      {/* Completed Competitions */}
-      {(filter === 'all' || filter === 'completed') && completedCompetitions.length > 0 && (
-        <>
-          <CompetitionListHeader>
-            <ListHeading>Completed Raffles</ListHeading>
-          </CompetitionListHeader>
-          
-          <CompetitionGrid>
-            {completedCompetitions.map(competition => (
-              <CompetitionCard key={competition.id} onClick={() => handleCompetitionClick(competition.id)}>
-                <CardImageContainer>
-                  <CardBadges>
-                    <StatusBadge status="complete">
-                      Completed
-                    </StatusBadge>
-                    <DifficultyBadge difficulty={competition.difficulty}>
-                      {competition.difficulty.charAt(0).toUpperCase() + competition.difficulty.slice(1)}
-                    </DifficultyBadge>
-                  </CardBadges>
-                  <IconContainer>
-                    <TimerIcon />
-                  </IconContainer>
-                </CardImageContainer>
+                <ProgressContainer>
+                  <ProgressBarOuter>
+                    <ProgressBarInner width={`${(competition.ticketsSold / competition.totalTickets) * 100}%`} />
+                  </ProgressBarOuter>
+                  <ProgressDetails>
+                    <span>{competition.ticketsSold} / {competition.totalTickets} tickets sold</span>
+                    <span>{Math.round((competition.ticketsSold / competition.totalTickets) * 100)}%</span>
+                  </ProgressDetails>
+                </ProgressContainer>
                 
-                <CardContent>
-                  <PrizeValue>{competition.prizeValue}</PrizeValue>
-                  <CardTitle>{competition.title}</CardTitle>
-                  <CardDescription>{competition.description}</CardDescription>
-                  
-                  <ProgressContainer>
-                    <ProgressBarOuter>
-                      <ProgressBarInner width="100%" />
-                    </ProgressBarOuter>
-                    <ProgressDetails>
-                      <span>{competition.ticketsSold}/{competition.totalTickets} tickets</span>
-                      <span>100%</span>
-                    </ProgressDetails>
-                  </ProgressContainer>
-                  
-                  <CardFooter>
-                    <PriceContainer>
-                      <PriceLabel>Winner</PriceLabel>
-                      <Price>{competition.winner}</Price>
-                    </PriceContainer>
-                    <TimeContainer>
-                      <TimeLabel>Completed</TimeLabel>
-                      <Time>{competition.completedAt}</Time>
-                    </TimeContainer>
-                  </CardFooter>
-                </CardContent>
-              </CompetitionCard>
-            ))}
-          </CompetitionGrid>
-        </>
-      )}
-      
-      {/* Empty state when no competitions match the filter */}
-      {sortedCompetitions.length === 0 && (
-        <EmptyState>
-          <EmptyStateIcon>
-            <SearchIcon />
-          </EmptyStateIcon>
-          <EmptyStateHeading>No raffles found</EmptyStateHeading>
-          <EmptyStateText>
-            There are no raffles matching your current filter. Try changing your filter or check back soon for new raffles.
-          </EmptyStateText>
-        </EmptyState>
-      )}
-      
-      {/* Pagination */}
-      {sortedCompetitions.length > 0 && (
-        <Pagination>
-          <PageButton disabled>
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M15.8334 10H4.16675M4.16675 10L10.0001 4.16667M4.16675 10L10.0001 15.8333" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </PageButton>
-          <PageButton active>1</PageButton>
-          <PageButton>2</PageButton>
-          <PageButton>3</PageButton>
-          <PageButton>
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M4.16675 10H15.8334M15.8334 10L10.0001 4.16667M15.8334 10L10.0001 15.8333" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </PageButton>
-        </Pagination>
+                <CardFooter>
+                  <div>
+                    <div style={{ fontWeight: 'bold', fontSize: '1.125rem' }}>
+                      {competition.ticketPrice} credits
+                    </div>
+                    <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>
+                      per ticket
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <div style={{ color: 'rgb(14, 165, 233)' }}>
+                        <TimerIcon />
+                      </div>
+                      <div style={{ fontWeight: 'bold' }}>
+                        {competition.status === 'complete' 
+                          ? 'Completed' 
+                          : formatTimeLeft(competition.endsAt)
+                        }
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '0.75rem', opacity: 0.7, textAlign: 'right' }}>
+                      {competition.status === 'complete' ? 'Winner drawn' : 'remaining'}
+                    </div>
+                  </div>
+                </CardFooter>
+              </CardContent>
+            </CompetitionCard>
+          ))}
+        </CompetitionGrid>
       )}
     </Container>
   );

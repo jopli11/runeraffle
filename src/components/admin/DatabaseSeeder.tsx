@@ -1,6 +1,21 @@
 import React, { useState } from 'react';
 import styled from '@emotion/styled';
-import { seedDatabase } from '../../utils/seedData';
+import { seedDatabase } from '@/utils/seedData';
+
+const Container = styled.div`
+  padding: 1.5rem;
+`;
+
+const Title = styled.h2`
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+`;
+
+const Description = styled.p`
+  color: hsl(var(--muted-foreground));
+  margin-bottom: 1.5rem;
+`;
 
 const SeedButton = styled.button`
   background-color: #4caf50;
@@ -64,9 +79,13 @@ export default function DatabaseSeeder() {
   };
   
   return (
-    <div>
-      <h2>Database Seeder</h2>
-      <p>Click the button below to seed the database with sample data.</p>
+    <Container>
+      <Title>Database Seeder</Title>
+      <Description>
+        Use this tool to seed the database with sample data for testing. 
+        This will add sample users, competitions, and completed competitions.
+      </Description>
+      
       <SeedButton onClick={handleSeed} disabled={seeding}>
         {seeding ? 'Seeding...' : 'Seed Database'}
       </SeedButton>
@@ -76,6 +95,6 @@ export default function DatabaseSeeder() {
           {result.message}
         </ResultMessage>
       )}
-    </div>
+    </Container>
   );
 } 
