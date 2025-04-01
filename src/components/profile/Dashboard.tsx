@@ -3,6 +3,7 @@ import styled from '@emotion/styled';
 import { useAuth } from '../../context/AuthContext';
 import { getUserTickets } from '../../services/firestore';
 import { getCompetition } from '../../services/firestore';
+import { useNavigate } from 'react-router-dom';
 
 // Styled components
 const DashboardContainer = styled.div`
@@ -156,6 +157,7 @@ export function Dashboard() {
     ticketsBought: 0,
     spentCredits: 0
   });
+  const navigate = useNavigate();
   
   useEffect(() => {
     if (currentUser) {
@@ -253,7 +255,7 @@ export function Dashboard() {
       <DashboardCard>
         <CardHeader>
           <CardTitle>Recent Competitions</CardTitle>
-          <CardLink href="#" onClick={() => window.navigate('/competitions')}>View all</CardLink>
+          <CardLink href="#" onClick={(e) => { e.preventDefault(); navigate('/competitions'); }}>View all</CardLink>
         </CardHeader>
         <CardContent>
           {recentTickets.length > 0 ? (
@@ -283,7 +285,7 @@ export function Dashboard() {
               You haven't entered any competitions yet.
               <div style={{ marginTop: '1rem' }}>
                 <button 
-                  onClick={() => window.navigate('/competitions')}
+                  onClick={() => navigate('/competitions')}
                   style={{
                     padding: '0.5rem 1rem',
                     borderRadius: '0.375rem',

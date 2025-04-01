@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import styled from '@emotion/styled';
 import { useAuth } from '../../context/AuthContext';
 import { logOut } from '../../config/firebase';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 // Styled components
 const HeaderContainer = styled.header`
@@ -32,7 +33,7 @@ const LogoContainer = styled.div`
   align-items: center;
 `;
 
-const Logo = styled.a`
+const Logo = styled(Link)`
   display: flex;
   align-items: center;
   font-weight: bold;
@@ -61,7 +62,7 @@ const DesktopNav = styled.nav`
   gap: 2rem;
 `;
 
-const NavLink = styled.a<{ active?: boolean }>`
+const NavLink = styled(Link)<{ active?: boolean | string }>`
   font-size: 0.9rem;
   font-weight: 500;
   color: ${props => props.active ? 'white' : 'rgba(255, 255, 255, 0.8)'};
@@ -174,6 +175,8 @@ const CreditSvg = () => (
 export function Header() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const { currentUser, userCredits, isAdmin } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleResize = () => {
@@ -183,19 +186,14 @@ export function Header() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-
-  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
-    e.preventDefault();
-    window.navigate(path);
-  };
   
-  // Get current path
-  const currentPath = window.location.pathname;
+  // Get current path from useLocation
+  const currentPath = location.pathname;
 
   const handleLogout = async () => {
     try {
       await logOut();
-      window.navigate('/');
+      navigate('/');
     } catch (error) {
       console.error('Error logging out:', error);
     }
@@ -206,51 +204,26 @@ export function Header() {
       <Container>
         <NavBar>
           <LogoContainer>
-            <div>
-              <Logo 
-                href="#" 
-                onClick={(e) => handleNavClick(e, '/')}
-              >
-                <span>Rune</span><LogoHighlight>Raffle</LogoHighlight>
-              </Logo>
-            </div>
+            <Logo to="/">
+              <span>Rune<LogoHighlight>Raffle</LogoHighlight></span>
+            </Logo>
             
             {!isMobile && (
               <DesktopNav>
-                <NavLink 
-                  href="#" 
-                  onClick={(e) => handleNavClick(e, '/')}
-                  active={currentPath === '/'}
-                >
+                <NavLink to="/" active={currentPath === '/' ? 'true' : undefined}>
                   Home
                 </NavLink>
-                <NavLink 
-                  href="#" 
-                  onClick={(e) => handleNavClick(e, '/competitions')}
-                  active={currentPath === '/competitions'}
-                >
+                <NavLink to="/competitions" active={(currentPath === '/competitions' || currentPath.startsWith('/competition/')) ? 'true' : undefined}>
                   Competitions
                 </NavLink>
-                <NavLink 
-                  href="#" 
-                  onClick={(e) => handleNavClick(e, '/winners')}
-                  active={currentPath === '/winners'}
-                >
+                <NavLink to="/winners" active={currentPath === '/winners' ? 'true' : undefined}>
                   Winners
                 </NavLink>
-                <NavLink 
-                  href="#" 
-                  onClick={(e) => handleNavClick(e, '/how-it-works')}
-                  active={currentPath === '/how-it-works'}
-                >
+                <NavLink to="/how-it-works" active={currentPath === '/how-it-works' ? 'true' : undefined}>
                   How It Works
                 </NavLink>
                 {isAdmin && (
-                  <NavLink 
-                    href="#" 
-                    onClick={(e) => handleNavClick(e, '/admin')}
-                    active={currentPath === '/admin'}
-                  >
+                  <NavLink to="/admin" active={currentPath === '/admin' ? 'true' : undefined}>
                     Admin
                   </NavLink>
                 )}
@@ -267,7 +240,7 @@ export function Header() {
                   </CreditIcon>
                   <CreditValue>{userCredits}</CreditValue>
                 </CreditContainer>
-                <GhostButton onClick={() => window.navigate('/profile')}>
+                <GhostButton onClick={() => navigate('/profile')}>
                   Profile
                 </GhostButton>
                 <PrimaryButton onClick={handleLogout}>
@@ -277,10 +250,10 @@ export function Header() {
               </>
             ) : (
               <>
-                <GhostButton onClick={() => window.navigate('/login')}>
+                <GhostButton onClick={() => navigate('/login')}>
                   Login
                 </GhostButton>
-                <PrimaryButton onClick={() => window.navigate('/register')}>
+                <PrimaryButton onClick={() => navigate('/register')}>
                   Register
                 </PrimaryButton>
               </>
@@ -290,40 +263,20 @@ export function Header() {
         
         {isMobile && (
           <MobileNav>
-            <MobileNavLink 
-              href="#" 
-              onClick={(e) => handleNavClick(e, '/')}
-              active={currentPath === '/'}
-            >
+            <MobileNavLink to="/" active={currentPath === '/' ? 'true' : undefined}>
               Home
             </MobileNavLink>
-            <MobileNavLink 
-              href="#" 
-              onClick={(e) => handleNavClick(e, '/competitions')}
-              active={currentPath === '/competitions'}
-            >
+            <MobileNavLink to="/competitions" active={(currentPath === '/competitions' || currentPath.startsWith('/competition/')) ? 'true' : undefined}>
               Competitions
             </MobileNavLink>
-            <MobileNavLink 
-              href="#" 
-              onClick={(e) => handleNavClick(e, '/winners')}
-              active={currentPath === '/winners'}
-            >
+            <MobileNavLink to="/winners" active={currentPath === '/winners' ? 'true' : undefined}>
               Winners
             </MobileNavLink>
-            <MobileNavLink 
-              href="#" 
-              onClick={(e) => handleNavClick(e, '/how-it-works')}
-              active={currentPath === '/how-it-works'}
-            >
+            <MobileNavLink to="/how-it-works" active={currentPath === '/how-it-works' ? 'true' : undefined}>
               How It Works
             </MobileNavLink>
             {isAdmin && (
-              <MobileNavLink 
-                href="#" 
-                onClick={(e) => handleNavClick(e, '/admin')}
-                active={currentPath === '/admin'}
-              >
+              <MobileNavLink to="/admin" active={currentPath === '/admin' ? 'true' : undefined}>
                 Admin
               </MobileNavLink>
             )}

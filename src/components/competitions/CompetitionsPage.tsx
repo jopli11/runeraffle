@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from '@emotion/styled';
 import { getActiveCompetitions, getCompletedCompetitions, Competition as FirestoreCompetition } from '../../services/firestore';
+import { useNavigate } from 'react-router-dom';
 
 // Styled components
 const Container = styled.div`
@@ -426,6 +427,7 @@ export default function CompetitionsPage() {
   const [competitions, setCompetitions] = useState<FirestoreCompetition[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   // Fetch competitions from Firestore
   useEffect(() => {
@@ -485,9 +487,7 @@ export default function CompetitionsPage() {
   };
 
   const handleCompetitionClick = (id: string) => {
-    if (typeof window !== 'undefined') {
-      window.navigate(`/competition/${id}`);
-    }
+    navigate(`/competition/${id}`);
   };
   
   return (

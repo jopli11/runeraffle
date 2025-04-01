@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import styled from '@emotion/styled';
 import { getCompetition, buyTicket, Competition as FirestoreCompetition } from '../../services/firestore';
 import { useAuth } from '../../context/AuthContext';
+import { TicketPurchase } from './TicketPurchase';
+import { useParams, useNavigate } from 'react-router-dom';
 
 // Styled components
 const Container = styled.div`
@@ -732,48 +734,49 @@ const CompletedMessageText = styled.span`
 `;
 
 export default function CompetitionPage() {
+  const { id } = useParams<{ id: string }>();
+  const { currentUser, userCredits, setUserCredits } = useAuth();
+  const navigate = useNavigate();
   const [ticketCount, setTicketCount] = useState(1);
   const [competition, setCompetition] = useState<FirestoreCompetition | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [purchasing, setPurchasing] = useState(false);
   const [purchaseSuccess, setPurchaseSuccess] = useState(false);
-  const { currentUser, userCredits, setUserCredits } = useAuth();
   
-  // Extract competition ID from URL path
-  const getCompetitionId = () => {
-    const path = window.location.pathname;
-    const pathSegments = path.split('/');
-    return pathSegments[pathSegments.length - 1];
+  // Add a state for competition refresh
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  
+  // Handle successful purchase by refreshing the competition data
+  const handlePurchaseComplete = () => {
+    setRefreshTrigger(prev => prev + 1);
   };
 
-  // Fetch competition data
   useEffect(() => {
     const fetchCompetition = async () => {
-      const competitionId = getCompetitionId();
-      if (!competitionId) {
-        setError('Competition ID not found in URL');
+      if (!id) {
+        setError('Competition ID is missing');
         setLoading(false);
         return;
       }
 
       try {
-        const competitionData = await getCompetition(competitionId);
-        if (!competitionData) {
+        const fetchedCompetition = await getCompetition(id);
+        if (!fetchedCompetition) {
           setError('Competition not found');
         } else {
-          setCompetition(competitionData);
+          setCompetition(fetchedCompetition);
         }
-      } catch (err) {
-        console.error('Error fetching competition:', err);
-        setError('Failed to load competition. Please try again later.');
+      } catch (error) {
+        console.error('Error fetching competition:', error);
+        setError('Failed to load competition details');
       } finally {
         setLoading(false);
       }
     };
 
     fetchCompetition();
-  }, []);
+  }, [id]);
 
   const incrementTickets = () => {
     // Limit by user's credits and available tickets
@@ -795,7 +798,7 @@ export default function CompetitionPage() {
   };
 
   const handleBackClick = () => {
-    window.navigate('/competitions');
+    navigate('/competitions');
   };
   
   const handleBuyTickets = async () => {
@@ -1077,7 +1080,7 @@ export default function CompetitionPage() {
                 </TotalPrice>
                 
                 {!currentUser ? (
-                  <SignInButton onClick={() => window.navigate('/login')}>
+                  <SignInButton onClick={() => navigate('/login')}>
                     Sign In to Purchase Tickets
                   </SignInButton>
                 ) : (
@@ -1094,7 +1097,7 @@ export default function CompetitionPage() {
                         Credits Available: <CreditsValue>{userCredits}</CreditsValue>
                       </CreditsAvailable>
                       {userCredits < competition.ticketPrice && (
-                        <AddCreditsButton onClick={() => window.navigate('/profile')}>
+                        <AddCreditsButton onClick={() => navigate('/profile')}>
                           Add Credits
                         </AddCreditsButton>
                       )}
@@ -1128,6 +1131,14 @@ export default function CompetitionPage() {
           </Card>
         </Sidebar>
       </CompetitionLayout>
+      
+      {/* Add TicketPurchase component before or after the CompetitionDetails */}
+      {competition && currentUser && (
+        <TicketPurchase 
+          competition={competition} 
+          onPurchaseComplete={handlePurchaseComplete} 
+        />
+      )}
     </Container>
   );
 } 

@@ -48,10 +48,39 @@ export interface User {
   updatedAt: firebase.firestore.Timestamp;
 }
 
+export interface SupportTicket {
+  id?: string;
+  userId: string;
+  userEmail: string;
+  type: 'prize_collection' | 'support' | 'refund' | 'other';
+  status: 'open' | 'in_progress' | 'resolved' | 'closed';
+  priority: 'low' | 'medium' | 'high';
+  subject: string;
+  description: string;
+  competitionId?: string;
+  prizeId?: string;
+  createdAt: firebase.firestore.Timestamp;
+  updatedAt: firebase.firestore.Timestamp;
+  resolvedAt?: firebase.firestore.Timestamp;
+  assignedTo?: string;
+}
+
+export interface TicketMessage {
+  id?: string;
+  ticketId: string;
+  userId: string;
+  isAdmin: boolean;
+  message: string;
+  createdAt: firebase.firestore.Timestamp;
+  attachments?: string[];
+}
+
 // Collection references
 const competitionsRef = db.collection('competitions');
 const ticketsRef = db.collection('tickets');
 const usersRef = db.collection('users');
+const supportTicketsRef = db.collection('supportTickets');
+const ticketMessagesRef = db.collection('ticketMessages');
 
 // Competition operations
 export const getCompetitions = async (): Promise<Competition[]> => {
@@ -208,4 +237,91 @@ export const updateUserCredits = async (email: string, credits: number): Promise
     credits,
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   });
+};
+
+// Support Ticket operations
+export const createSupportTicket = async (ticket: Omit<SupportTicket, 'id' | 'createdAt' | 'updatedAt' | 'status'>): Promise<string> => {
+  const newTicket = {
+    ...ticket,
+    status: 'open',
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  
+  const docRef = await supportTicketsRef.add(newTicket);
+  return docRef.id;
+};
+
+export const getSupportTicket = async (ticketId: string): Promise<SupportTicket | null> => {
+  const docRef = supportTicketsRef.doc(ticketId);
+  const docSnap = await docRef.get();
+  
+  if (docSnap.exists) {
+    return { id: docSnap.id, ...docSnap.data() as SupportTicket };
+  }
+  
+  return null;
+};
+
+export const updateSupportTicket = async (ticketId: string, data: Partial<SupportTicket>): Promise<void> => {
+  const docRef = supportTicketsRef.doc(ticketId);
+  await docRef.update({
+    ...data,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+};
+
+export const getUserSupportTickets = async (userId: string): Promise<SupportTicket[]> => {
+  const snapshot = await supportTicketsRef
+    .where('userId', '==', userId)
+    .orderBy('createdAt', 'desc')
+    .get();
+  
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as SupportTicket }));
+};
+
+export const getOpenSupportTickets = async (): Promise<SupportTicket[]> => {
+  const snapshot = await supportTicketsRef
+    .where('status', 'in', ['open', 'in_progress'])
+    .orderBy('priority', 'desc')
+    .orderBy('createdAt', 'asc')
+    .get();
+  
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as SupportTicket }));
+};
+
+export const closeSupportTicket = async (ticketId: string, resolution?: string): Promise<void> => {
+  const docRef = supportTicketsRef.doc(ticketId);
+  await docRef.update({
+    status: 'resolved',
+    resolvedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    resolution,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+};
+
+// Ticket Message operations
+export const addTicketMessage = async (message: Omit<TicketMessage, 'id' | 'createdAt'>): Promise<string> => {
+  const newMessage = {
+    ...message,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  
+  const docRef = await ticketMessagesRef.add(newMessage);
+  
+  // Update the ticket's updatedAt timestamp
+  await supportTicketsRef.doc(message.ticketId).update({
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  
+  return docRef.id;
+};
+
+export const getTicketMessages = async (ticketId: string): Promise<TicketMessage[]> => {
+  const snapshot = await ticketMessagesRef
+    .where('ticketId', '==', ticketId)
+    .orderBy('createdAt', 'asc')
+    .get();
+  
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as TicketMessage }));
 }; 

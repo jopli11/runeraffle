@@ -1,6 +1,7 @@
 import React from 'react'
 import styled from '@emotion/styled';
 import { useAuth } from '../../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const UserButton = styled.button`
   height: 2.5rem;
@@ -29,15 +30,15 @@ const UserInitial = styled.span`
 
 export function UserNav() {
   const { currentUser } = useAuth();
+  const navigate = useNavigate();
   
   const getUserInitial = (): string => {
     if (!currentUser?.email) return 'U';
     return currentUser.email.charAt(0).toUpperCase();
   };
 
-  const handleProfileClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-    window.navigate('/profile');
+  const handleProfileClick = () => {
+    navigate('/profile');
   };
 
   return (

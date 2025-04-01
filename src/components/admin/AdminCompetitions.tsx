@@ -4,6 +4,7 @@ import { getCompetitions, deleteCompetition, updateCompetition } from '../../ser
 import type { Competition } from '../../services/firestore';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/firestore';
+import { useNavigate } from 'react-router-dom';
 
 // Styled components
 const Container = styled.div`
@@ -165,6 +166,7 @@ const ActionCellContainer = styled.div`
 export default function AdminCompetitions() {
   const [competitions, setCompetitions] = useState<Competition[]>([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   // Fetch competitions on component mount
   useEffect(() => {
@@ -183,7 +185,7 @@ export default function AdminCompetitions() {
   }, []);
 
   const handleViewCompetition = (id: string) => {
-    window.navigate(`/competition/${id}`);
+    navigate(`/competition/${id}`);
   };
 
   const handleEditCompetition = (id: string) => {

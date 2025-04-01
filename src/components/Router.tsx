@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import App from '../App';
 import { Header } from './layout/Header';
 import { Footer } from './layout/Footer';
@@ -26,75 +27,28 @@ const Main = styled.main`
   width: 100%;
 `;
 
-// Extend Window interface to include navigate function
-declare global {
-  interface Window {
-    navigate: (path: string) => void;
-  }
-}
-
 export default function Router() {
-  const [currentPath, setCurrentPath] = useState('/');
-  
-  useEffect(() => {
-    // Initialize with current path
-    setCurrentPath(window.location.pathname);
-    
-    // Define the navigate function on the window object
-    window.navigate = (path: string) => {
-      // Update URL without page reload
-      window.history.pushState({}, '', path);
-      setCurrentPath(path);
-      
-      // Scroll to top on navigation
-      window.scrollTo(0, 0);
-    };
-
-    // Handle browser back/forward buttons
-    const handlePopState = () => {
-      setCurrentPath(window.location.pathname);
-    };
-
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
-  
-  // Determine which component to render based on the path
-  const renderContent = () => {
-    // Check if path is a competition detail page
-    if (currentPath.startsWith('/competition/')) {
-      return <CompetitionPage />;
-    }
-    
-    // Check other routes
-    switch (currentPath) {
-      case '/profile':
-        return <ProfilePage />;
-      case '/competitions':
-        return <CompetitionsPage />;
-      case '/winners':
-        return <WinnersPage />;
-      case '/how-it-works':
-        return <HowItWorksPage />;
-      case '/login':
-      case '/register':
-        return <AuthPage />;
-      case '/admin':
-        return <AdminDashboard />;
-      default:
-        return <App />;
-    }
-  };
-
   return (
-    <AuthProvider>
-      <PageWrapper>
-        <Header />
-        <Main>
-          {renderContent()}
-        </Main>
-        <Footer />
-      </PageWrapper>
-    </AuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <PageWrapper>
+          <Header />
+          <Main>
+            <Routes>
+              <Route path="/" element={<App />} />
+              <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/competitions" element={<CompetitionsPage />} />
+              <Route path="/competition/:id" element={<CompetitionPage />} />
+              <Route path="/winners" element={<WinnersPage />} />
+              <Route path="/how-it-works" element={<HowItWorksPage />} />
+              <Route path="/login" element={<AuthPage />} />
+              <Route path="/register" element={<AuthPage />} />
+              <Route path="/admin" element={<AdminDashboard />} />
+            </Routes>
+          </Main>
+          <Footer />
+        </PageWrapper>
+      </AuthProvider>
+    </BrowserRouter>
   );
 } 

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import styled from '@emotion/styled';
 import { registerWithEmail, loginWithEmail, signInWithGoogle, sendPasswordResetEmail } from '../../config/firebase';
+import { useNavigate } from 'react-router-dom';
 
 // Styled components
 const Container = styled.div`
@@ -172,6 +173,7 @@ export default function AuthPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -182,11 +184,11 @@ export default function AuthPage() {
     try {
       if (activeTab === 'login') {
         await loginWithEmail(email, password);
-        window.navigate('/');
+        navigate('/');
       } else if (activeTab === 'register') {
         await registerWithEmail(email, password, displayName);
         setSuccessMessage('Account created! Please check your email for verification.');
-        setTimeout(() => window.navigate('/'), 2000);
+        setTimeout(() => navigate('/'), 2000);
       } else if (activeTab === 'reset') {
         await sendPasswordResetEmail(email);
         setSuccessMessage('Password reset email sent. Please check your inbox.');
@@ -225,7 +227,7 @@ export default function AuthPage() {
 
     try {
       await signInWithGoogle();
-      window.navigate('/');
+      navigate('/');
     } catch (err: any) {
       console.error('Google sign-in error:', err);
       // Format Firebase error messages to be more user-friendly
@@ -303,6 +305,7 @@ export default function AuthPage() {
                   onChange={(e) => setDisplayName(e.target.value)}
                   placeholder="Your display name"
                   required={activeTab === 'register'}
+                  autoComplete="name"
                 />
               </FormGroup>
             )}
@@ -316,6 +319,7 @@ export default function AuthPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="email@example.com"
                 required
+                autoComplete="email"
               />
             </FormGroup>
             
@@ -329,6 +333,7 @@ export default function AuthPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
+                  autoComplete={activeTab === 'login' ? 'current-password' : 'new-password'}
                 />
               </FormGroup>
             )}

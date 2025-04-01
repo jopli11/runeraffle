@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styled from '@emotion/styled';
 import { getCompletedCompetitions } from '../../services/firestore';
 import type { Competition } from '../../services/firestore';
+import { useNavigate } from 'react-router-dom';
 
 // Styled components - similar to other admin components
 const Container = styled.div`
@@ -107,6 +108,7 @@ const VerificationButton = styled.button`
 export default function AdminWinners() {
   const [completedCompetitions, setCompletedCompetitions] = useState<Competition[]>([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchCompletedCompetitions = async () => {
@@ -124,7 +126,7 @@ export default function AdminWinners() {
   }, []);
 
   const handleViewCompetition = (id: string) => {
-    window.navigate(`/competition/${id}`);
+    navigate(`/competition/${id}`);
   };
 
   // Format timestamp to readable date

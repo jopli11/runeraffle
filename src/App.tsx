@@ -2,6 +2,7 @@ import styled from '@emotion/styled';
 import { useState, useEffect } from 'react';
 import { getActiveCompetitions, buyTicket, Competition as FirestoreCompetition } from './services/firestore';
 import { useAuth } from './context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 // Styled components
 const Container = styled.div`
@@ -499,6 +500,7 @@ export default function App() {
   const [purchasing, setPurchasing] = useState(false);
   const [purchaseSuccess, setPurchaseSuccess] = useState(false);
   const { currentUser, userCredits, setUserCredits } = useAuth();
+  const navigate = useNavigate();
 
   // Fetch active competitions
   useEffect(() => {
@@ -557,26 +559,34 @@ export default function App() {
     }
   };
   
-  const handleBrowseCompetitions = () => {
-    window.navigate('/competitions');
+  const handleNavigateToCompetitions = () => {
+    navigate('/competitions');
   };
   
-  const handleViewHowItWorks = () => {
-    window.navigate('/how-it-works');
+  const handleNavigateToHowItWorks = () => {
+    navigate('/how-it-works');
   };
   
-  const handleViewCompetition = (id: string) => {
-    window.navigate(`/competition/${id}`);
+  const handleNavigateToCompetition = (id: string) => {
+    navigate(`/competition/${id}`);
   };
   
-  const handleViewAllCompetitions = () => {
-    window.navigate('/competitions');
+  const handleNavigateToViewAll = () => {
+    navigate('/competitions');
   };
-
+  
+  const handleNavigateToLogin = () => {
+    navigate('/login');
+  };
+  
+  const handleNavigateToProfile = () => {
+    navigate('/profile');
+  };
+  
   const handleBuyTickets = async () => {
     if (!currentUser || !featuredCompetition || !featuredCompetition.id) {
       if (!currentUser) {
-        window.navigate('/login');
+        handleNavigateToLogin();
       }
       return;
     }
@@ -642,11 +652,11 @@ export default function App() {
             Buy tickets, increase your odds, and win big!
           </HeroDescription>
           <ButtonGroup>
-            <PrimaryButton onClick={handleBrowseCompetitions}>
+            <PrimaryButton onClick={handleNavigateToCompetitions}>
               Browse Competitions
               <ArrowRightSvg />
             </PrimaryButton>
-            <SecondaryButton onClick={handleViewHowItWorks}>
+            <SecondaryButton onClick={handleNavigateToHowItWorks}>
               How It Works
             </SecondaryButton>
           </ButtonGroup>
@@ -728,7 +738,7 @@ export default function App() {
                 </TicketInfo>
                 
                 <PrimaryButton 
-                  onClick={!currentUser ? () => window.navigate('/login') : handleBuyTickets}
+                  onClick={!currentUser ? handleNavigateToLogin : handleBuyTickets}
                   disabled={purchasing || (!!currentUser && (userCredits || 0) < ticketCount * featuredCompetition.ticketPrice)}
                 >
                   {!currentUser 
@@ -747,7 +757,7 @@ export default function App() {
                       href="#" 
                       onClick={(e) => {
                         e.preventDefault();
-                        window.navigate('/profile');
+                        handleNavigateToProfile();
                       }}
                       style={{ color: 'hsl(var(--primary))', textDecoration: 'none' }}
                     >
@@ -765,7 +775,7 @@ export default function App() {
       <Section>
         <SectionHeader>
           <Heading2>Active Competitions</Heading2>
-          <ViewAllButton onClick={handleViewAllCompetitions}>
+          <ViewAllButton onClick={handleNavigateToViewAll}>
             View All
             <ArrowRightSvg />
           </ViewAllButton>
@@ -780,7 +790,7 @@ export default function App() {
         ) : (
           <CompetitionGrid>
             {competitions.map((competition) => (
-              <CompetitionCard key={competition.id} onClick={() => competition.id && handleViewCompetition(competition.id)}>
+              <CompetitionCard key={competition.id} onClick={() => competition.id && handleNavigateToCompetition(competition.id)}>
                 <CardImageContainer>
                   {competition.imageUrl ? (
                     <CompetitionImage src={competition.imageUrl} alt={competition.title} />
@@ -823,7 +833,7 @@ export default function App() {
                   </div>
                   <EnterButton onClick={(e) => {
                     e.stopPropagation();
-                    competition.id && handleViewCompetition(competition.id);
+                    competition.id && handleNavigateToCompetition(competition.id);
                   }}>
                     Enter Raffle
                   </EnterButton>
@@ -867,7 +877,7 @@ export default function App() {
           </StepContent>
         </StepsGrid>
         <ButtonGroup style={{ justifyContent: 'center', marginTop: '2rem' }}>
-          <SecondaryButton onClick={handleViewHowItWorks}>
+          <SecondaryButton onClick={handleNavigateToHowItWorks}>
             Learn More About Our Fair Draw System
           </SecondaryButton>
         </ButtonGroup>

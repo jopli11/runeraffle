@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from '@emotion/styled';
 import { useAuth } from '../../context/AuthContext';
 import AdminCompetitions from './AdminCompetitions';
@@ -6,6 +6,9 @@ import AdminUsers from './AdminUsers';
 import AdminWinners from './AdminWinners';
 import AdminCompetitionForm from './AdminCompetitionForm';
 import DatabaseSeeder from './DatabaseSeeder';
+import { CompetitionProcessor } from './CompetitionProcessor';
+import AdminSupportTickets from './AdminSupportTickets';
+import { useNavigate } from 'react-router-dom';
 
 // Styled components
 const Container = styled.div`
@@ -119,37 +122,74 @@ const DangerButton = styled(Button)`
   }
 `;
 
+const LoadingContainer = styled.div`
+  text-align: center;
+  padding: 3rem 1rem;
+  color: hsl(var(--muted-foreground));
+
+  h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: hsl(var(--foreground));
+  }
+`;
+
+const ErrorContainer = styled.div`
+  text-align: center;
+  padding: 3rem 1rem;
+  color: hsl(var(--muted-foreground));
+
+  h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: hsl(var(--foreground));
+  }
+
+  p {
+    max-width: 500px;
+    margin: 0 auto;
+  }
+`;
+
 export default function AdminDashboard() {
   const { currentUser, isLoading, isAdmin } = useAuth();
-  const [activeTab, setActiveTab] = useState<'competitions' | 'users' | 'winners' | 'create' | 'seeder'>('competitions');
+  const [activeTab, setActiveTab] = useState<'competitions' | 'users' | 'winners' | 'create' | 'seeder' | 'processor' | 'support'>('competitions');
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!currentUser || !isAdmin) {
+      navigate('/login');
+    }
+  }, [currentUser, isAdmin, navigate]);
 
   // If loading or not logged in, show appropriate message
   if (isLoading) {
+    return <LoadingContainer>Loading...</LoadingContainer>;
+  }
+  
+  if (!currentUser || !isAdmin) {
     return (
       <Container>
-        <NoAccessMessage>
-          <h2>Loading...</h2>
-        </NoAccessMessage>
-      </Container>
-    );
-  }
-
-  if (!currentUser) {
-    // Redirect to login
-    if (typeof window !== 'undefined') {
-      window.navigate('/login');
-    }
-    return null;
-  }
-
-  // If not an admin, show no access message
-  if (!isAdmin) {
-    return (
-      <Container>
-        <NoAccessMessage>
-          <h2>Admin Access Required</h2>
-          <p>You don't have permission to access the admin dashboard. Please contact your administrator if you believe this is a mistake.</p>
-        </NoAccessMessage>
+        <ErrorContainer>
+          <h2>Access Denied</h2>
+          <p>You do not have permission to access the admin dashboard.</p>
+          <button 
+            onClick={() => navigate('/login')}
+            style={{
+              padding: '0.5rem 1rem',
+              background: 'hsl(var(--primary))',
+              color: 'white',
+              border: 'none',
+              borderRadius: '0.375rem',
+              cursor: 'pointer',
+              marginTop: '1rem'
+            }}
+          >
+            Go to Login
+          </button>
+        </ErrorContainer>
       </Container>
     );
   }
@@ -169,6 +209,18 @@ export default function AdminDashboard() {
         >
           + New Competition
         </PrimaryButton>
+        <SecondaryButton
+          onClick={() => setActiveTab('processor')}
+          disabled={activeTab === 'processor'}
+        >
+          Process Competitions
+        </SecondaryButton>
+        <SecondaryButton
+          onClick={() => setActiveTab('support')}
+          disabled={activeTab === 'support'}
+        >
+          Support Tickets
+        </SecondaryButton>
         <SecondaryButton
           onClick={() => setActiveTab('seeder')}
           disabled={activeTab === 'seeder'}
@@ -197,6 +249,18 @@ export default function AdminDashboard() {
           Past Winners
         </Tab>
         <Tab 
+          active={activeTab === 'processor'} 
+          onClick={() => setActiveTab('processor')}
+        >
+          Processor
+        </Tab>
+        <Tab 
+          active={activeTab === 'support'} 
+          onClick={() => setActiveTab('support')}
+        >
+          Support
+        </Tab>
+        <Tab 
           active={activeTab === 'seeder'} 
           onClick={() => setActiveTab('seeder')}
         >
@@ -208,6 +272,8 @@ export default function AdminDashboard() {
       {activeTab === 'users' && <AdminUsers />}
       {activeTab === 'winners' && <AdminWinners />}
       {activeTab === 'create' && <AdminCompetitionForm onCancel={() => setActiveTab('competitions')} />}
+      {activeTab === 'processor' && <CompetitionProcessor />}
+      {activeTab === 'support' && <AdminSupportTickets />}
       {activeTab === 'seeder' && <DatabaseSeeder />}
     </Container>
   );

@@ -1,5 +1,6 @@
 import React from 'react';
 import styled from '@emotion/styled';
+import { useNavigate } from 'react-router-dom';
 
 // Styled components
 const Container = styled.div`
@@ -204,7 +205,9 @@ const ArrowRightIcon = () => (
   </svg>
 );
 
-export default function HowItWorksPage() {
+export function HowItWorksPage() {
+  const navigate = useNavigate();
+  
   return (
     <Container>
       <PageHeader>
@@ -412,8 +415,8 @@ export default function HowItWorksPage() {
       </FAQ>
       
       <ButtonContainer>
-        <PrimaryButton onClick={() => window.navigate('/competitions')}>
-          Browse Raffles <ArrowRightIcon />
+        <PrimaryButton onClick={() => navigate('/competitions')}>
+          Browse Competitions <ArrowRightIcon />
         </PrimaryButton>
       </ButtonContainer>
     </Container>
