@@ -7,6 +7,7 @@ import CompetitionPage from './competitions/CompetitionPage';
 import WinnersPage from './winners/WinnersPage';
 import HowItWorksPage from './howItWorks/HowItWorksPage';
 import AuthPage from './auth/AuthPage';
+import AdminDashboard from './admin/AdminDashboard';
 import { AuthProvider } from '../context/AuthContext';
 import styled from '@emotion/styled';
 
@@ -77,6 +78,8 @@ export default function Router() {
       case '/login':
       case '/register':
         return <AuthPage />;
+      case '/admin':
+        return <AdminDashboard />;
       default:
         return <App />;
     }

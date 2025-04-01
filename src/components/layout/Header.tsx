@@ -51,7 +51,7 @@ const Logo = styled.a`
   }
 `;
 
-const LogoX = styled.span`
+const LogoHighlight = styled.span`
   color: hsl(var(--primary));
   font-weight: 800;
 `;
@@ -174,7 +174,7 @@ const CreditSvg = () => (
 
 export function Header() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  const { currentUser, userCredits } = useAuth();
+  const { currentUser, userCredits, isAdmin } = useAuth();
 
   useEffect(() => {
     const handleResize = () => {
@@ -212,7 +212,7 @@ export function Header() {
                 href="#" 
                 onClick={(e) => handleNavClick(e, '/')}
               >
-                Rune<LogoX>Raffle</LogoX>
+                <span>Rune</span><LogoHighlight>Raffle</LogoHighlight>
               </Logo>
             </div>
             
@@ -246,6 +246,15 @@ export function Header() {
                 >
                   How It Works
                 </NavLink>
+                {isAdmin && (
+                  <NavLink 
+                    href="#" 
+                    onClick={(e) => handleNavClick(e, '/admin')}
+                    active={currentPath === '/admin'}
+                  >
+                    Admin
+                  </NavLink>
+                )}
               </DesktopNav>
             )}
           </LogoContainer>
@@ -310,6 +319,15 @@ export function Header() {
             >
               How It Works
             </MobileNavLink>
+            {isAdmin && (
+              <MobileNavLink 
+                href="#" 
+                onClick={(e) => handleNavClick(e, '/admin')}
+                active={currentPath === '/admin'}
+              >
+                Admin
+              </MobileNavLink>
+            )}
           </MobileNav>
         )}
       </Container>
