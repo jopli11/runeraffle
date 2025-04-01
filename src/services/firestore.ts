@@ -1,19 +1,5 @@
-import { 
-  collection, 
-  doc, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  getDocs, 
-  getDoc, 
-  query, 
-  where, 
-  orderBy, 
-  limit, 
-  Timestamp,
-  serverTimestamp,
-  setDoc
-} from 'firebase/firestore';
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/firestore';
 import { db } from '../config/firebase';
 
 // Types
@@ -23,15 +9,16 @@ export interface Competition {
   description: string;
   prize: string;
   prizeValue: string;
+  imageUrl?: string;
   status: 'active' | 'ending' | 'complete' | 'cancelled';
   difficulty: 'easy' | 'medium' | 'hard';
   ticketPrice: number;
   ticketsSold: number;
   totalTickets: number;
-  endsAt: Timestamp;
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
-  completedAt?: Timestamp;
+  endsAt: firebase.firestore.Timestamp;
+  createdAt: firebase.firestore.Timestamp;
+  updatedAt: firebase.firestore.Timestamp;
+  completedAt?: firebase.firestore.Timestamp;
   winner?: {
     userId: string;
     username: string;
@@ -46,7 +33,7 @@ export interface Ticket {
   id?: string;
   competitionId: string;
   userId: string;
-  purchasedAt: Timestamp;
+  purchasedAt: firebase.firestore.Timestamp;
   ticketNumber: number;
   isWinner: boolean;
 }
@@ -57,46 +44,42 @@ export interface User {
   displayName?: string;
   credits: number;
   isAdmin: boolean;
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
+  createdAt: firebase.firestore.Timestamp;
+  updatedAt: firebase.firestore.Timestamp;
 }
 
 // Collection references
-const competitionsRef = collection(db, 'competitions');
-const ticketsRef = collection(db, 'tickets');
-const usersRef = collection(db, 'users');
+const competitionsRef = db.collection('competitions');
+const ticketsRef = db.collection('tickets');
+const usersRef = db.collection('users');
 
 // Competition operations
 export const getCompetitions = async (): Promise<Competition[]> => {
-  const snapshot = await getDocs(competitionsRef);
+  const snapshot = await competitionsRef.get();
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as Competition }));
 };
 
 export const getActiveCompetitions = async (): Promise<Competition[]> => {
-  const q = query(
-    competitionsRef, 
-    where('status', 'in', ['active', 'ending']),
-    orderBy('createdAt', 'desc')
-  );
-  const snapshot = await getDocs(q);
+  const snapshot = await competitionsRef
+    .where('status', 'in', ['active', 'ending'])
+    .orderBy('createdAt', 'desc')
+    .get();
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as Competition }));
 };
 
 export const getCompletedCompetitions = async (): Promise<Competition[]> => {
-  const q = query(
-    competitionsRef, 
-    where('status', 'in', ['complete']),
-    orderBy('completedAt', 'desc')
-  );
-  const snapshot = await getDocs(q);
+  const snapshot = await competitionsRef
+    .where('status', 'in', ['complete'])
+    .orderBy('completedAt', 'desc')
+    .get();
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as Competition }));
 };
 
 export const getCompetition = async (id: string): Promise<Competition | null> => {
-  const docRef = doc(db, 'competitions', id);
-  const docSnap = await getDoc(docRef);
+  const docRef = competitionsRef.doc(id);
+  const docSnap = await docRef.get();
   
-  if (docSnap.exists()) {
+  if (docSnap.exists) {
     return { id: docSnap.id, ...docSnap.data() as Competition };
   }
   
@@ -107,33 +90,33 @@ export const createCompetition = async (competition: Omit<Competition, 'id' | 'c
   const newCompetition = {
     ...competition,
     ticketsSold: 0,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp()
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   };
   
-  const docRef = await addDoc(competitionsRef, newCompetition);
+  const docRef = await competitionsRef.add(newCompetition);
   return docRef.id;
 };
 
 export const updateCompetition = async (id: string, data: Partial<Competition>): Promise<void> => {
-  const docRef = doc(db, 'competitions', id);
-  await updateDoc(docRef, {
+  const docRef = competitionsRef.doc(id);
+  await docRef.update({
     ...data,
-    updatedAt: serverTimestamp()
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   });
 };
 
 export const deleteCompetition = async (id: string): Promise<void> => {
-  const docRef = doc(db, 'competitions', id);
-  await deleteDoc(docRef);
+  const docRef = competitionsRef.doc(id);
+  await docRef.delete();
 };
 
 export const completeCompetition = async (id: string, winner: Competition['winner'], seed: string, blockHash: string, winningTicket: number): Promise<void> => {
-  const docRef = doc(db, 'competitions', id);
-  await updateDoc(docRef, {
+  const docRef = competitionsRef.doc(id);
+  await docRef.update({
     status: 'complete',
-    completedAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
+    completedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
     winner,
     seed,
     blockHash,
@@ -142,10 +125,10 @@ export const completeCompetition = async (id: string, winner: Competition['winne
 };
 
 export const cancelCompetition = async (id: string): Promise<void> => {
-  const docRef = doc(db, 'competitions', id);
-  await updateDoc(docRef, {
+  const docRef = competitionsRef.doc(id);
+  await docRef.update({
     status: 'cancelled',
-    updatedAt: serverTimestamp()
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   });
 };
 
@@ -153,21 +136,21 @@ export const cancelCompetition = async (id: string): Promise<void> => {
 export const buyTicket = async (ticket: Omit<Ticket, 'id' | 'purchasedAt' | 'isWinner'>): Promise<string> => {
   const newTicket = {
     ...ticket,
-    purchasedAt: serverTimestamp(),
+    purchasedAt: firebase.firestore.FieldValue.serverTimestamp(),
     isWinner: false
   };
   
-  const docRef = await addDoc(ticketsRef, newTicket);
+  const docRef = await ticketsRef.add(newTicket);
   
   // Update competition ticket count
-  const competitionRef = doc(db, 'competitions', ticket.competitionId);
-  const competitionSnap = await getDoc(competitionRef);
+  const competitionRef = competitionsRef.doc(ticket.competitionId);
+  const competitionSnap = await competitionRef.get();
   
-  if (competitionSnap.exists()) {
+  if (competitionSnap.exists) {
     const competition = competitionSnap.data() as Competition;
-    await updateDoc(competitionRef, {
+    await competitionRef.update({
       ticketsSold: competition.ticketsSold + 1,
-      updatedAt: serverTimestamp()
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
   }
   
@@ -175,40 +158,36 @@ export const buyTicket = async (ticket: Omit<Ticket, 'id' | 'purchasedAt' | 'isW
 };
 
 export const getUserTickets = async (userId: string): Promise<Ticket[]> => {
-  const q = query(
-    ticketsRef,
-    where('userId', '==', userId),
-    orderBy('purchasedAt', 'desc')
-  );
-  const snapshot = await getDocs(q);
+  const snapshot = await ticketsRef
+    .where('userId', '==', userId)
+    .orderBy('purchasedAt', 'desc')
+    .get();
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as Ticket }));
 };
 
 export const getCompetitionTickets = async (competitionId: string): Promise<Ticket[]> => {
-  const q = query(
-    ticketsRef,
-    where('competitionId', '==', competitionId),
-    orderBy('purchasedAt', 'asc')
-  );
-  const snapshot = await getDocs(q);
+  const snapshot = await ticketsRef
+    .where('competitionId', '==', competitionId)
+    .orderBy('purchasedAt', 'asc')
+    .get();
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as Ticket }));
 };
 
 // User operations
 export const createUser = async (user: Omit<User, 'id' | 'createdAt' | 'updatedAt'>): Promise<void> => {
-  const userRef = doc(db, 'users', user.email);
-  await setDoc(userRef, {
+  const userRef = usersRef.doc(user.email);
+  await userRef.set({
     ...user,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp()
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   });
 };
 
 export const getUser = async (email: string): Promise<User | null> => {
-  const docRef = doc(db, 'users', email);
-  const docSnap = await getDoc(docRef);
+  const docRef = usersRef.doc(email);
+  const docSnap = await docRef.get();
   
-  if (docSnap.exists()) {
+  if (docSnap.exists) {
     return { id: docSnap.id, ...docSnap.data() as User };
   }
   
@@ -216,17 +195,17 @@ export const getUser = async (email: string): Promise<User | null> => {
 };
 
 export const updateUser = async (email: string, data: Partial<User>): Promise<void> => {
-  const docRef = doc(db, 'users', email);
-  await updateDoc(docRef, {
+  const docRef = usersRef.doc(email);
+  await docRef.update({
     ...data,
-    updatedAt: serverTimestamp()
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   });
 };
 
 export const updateUserCredits = async (email: string, credits: number): Promise<void> => {
-  const docRef = doc(db, 'users', email);
-  await updateDoc(docRef, {
+  const docRef = usersRef.doc(email);
+  await docRef.update({
     credits,
-    updatedAt: serverTimestamp()
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   });
 }; 

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import styled from '@emotion/styled';
 import { createCompetition } from '../../services/firestore';
-import { db } from '../../config/firebase';
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/firestore';
 
 // Styled components
 const FormContainer = styled.div`
@@ -157,6 +158,7 @@ export default function AdminCompetitionForm({ competitionId, onCancel, onSucces
     description: '',
     prize: '',
     prizeValue: '',
+    imageUrl: '',
     difficulty: 'medium',
     ticketPrice: 3,
     totalTickets: 500,
@@ -177,39 +179,41 @@ export default function AdminCompetitionForm({ competitionId, onCancel, onSucces
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    setError('');
     setIsSubmitting(true);
     
     try {
-      // Validate form data
-      if (!formData.title || !formData.description || !formData.prize || !formData.prizeValue) {
+      // Validate required fields
+      if (!formData.title || !formData.description || !formData.prize || 
+          !formData.prizeValue || !formData.ticketPrice || !formData.totalTickets || 
+          !formData.endsAt) {
         throw new Error('Please fill in all required fields.');
       }
       
-      if (formData.ticketPrice <= 0) {
+      // Validate ticket price and total tickets
+      if (Number(formData.ticketPrice) <= 0) {
         throw new Error('Ticket price must be greater than 0.');
       }
       
-      if (formData.totalTickets <= 0) {
+      if (Number(formData.totalTickets) <= 0) {
         throw new Error('Total tickets must be greater than 0.');
       }
       
-      // Create an end date (using the date input + time at end of day)
+      // Validate end date
       const endDate = new Date(formData.endsAt);
-      endDate.setHours(23, 59, 59, 999); // Set to end of day
       
       if (endDate <= new Date()) {
         throw new Error('End date must be in the future.');
       }
       
-      // Create the competition
+      // Create the competition with the endDate as a proper Firestore Timestamp
       const data = {
         ...formData,
         ticketPrice: Number(formData.ticketPrice),
         totalTickets: Number(formData.totalTickets),
         status: formData.status as 'active' | 'ending',
         difficulty: formData.difficulty as 'easy' | 'medium' | 'hard',
-        endsAt: db.Timestamp.fromDate(endDate)
+        endsAt: firebase.firestore.Timestamp.fromDate(endDate)
       };
       
       await createCompetition(data);
@@ -253,6 +257,20 @@ export default function AdminCompetitionForm({ competitionId, onCancel, onSucces
             placeholder="Provide details about the competition and prizes"
             required
           />
+        </FormGroup>
+        
+        <FormGroup>
+          <Label htmlFor="imageUrl">Image URL</Label>
+          <Input
+            id="imageUrl"
+            name="imageUrl"
+            value={formData.imageUrl}
+            onChange={handleChange}
+            placeholder="https://example.com/image.jpg"
+          />
+          <div style={{ fontSize: '0.75rem', marginTop: '0.25rem', opacity: 0.7 }}>
+            Provide a URL to an image for this competition (optional)
+          </div>
         </FormGroup>
         
         <SplitRow>

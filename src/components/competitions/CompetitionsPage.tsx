@@ -131,6 +131,15 @@ const CardImageContainer = styled.div`
   overflow: hidden;
 `;
 
+const CompetitionImage = styled.img`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: absolute;
+  top: 0;
+  left: 0;
+`;
+
 const IconContainer = styled.div`
   position: relative;
   z-index: 1;
@@ -408,6 +417,7 @@ interface Competition {
   completedAt?: string;
   winner?: string;
   seed?: string;
+  imageUrl?: string;
 }
 
 export default function CompetitionsPage() {
@@ -554,9 +564,13 @@ export default function CompetitionsPage() {
               onClick={() => handleCompetitionClick(competition.id!)}
             >
               <CardImageContainer>
-                <IconContainer>
-                  <TimerIcon />
-                </IconContainer>
+                {competition.imageUrl ? (
+                  <CompetitionImage src={competition.imageUrl} alt={competition.title} />
+                ) : (
+                  <IconContainer>
+                    <TimerIcon />
+                  </IconContainer>
+                )}
                 <CardBadges>
                   <StatusBadge status={competition.status as 'active' | 'ending' | 'complete'}>
                     {competition.status}

@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import styled from '@emotion/styled';
 import { getCompetitions, deleteCompetition, updateCompetition } from '../../services/firestore';
 import type { Competition } from '../../services/firestore';
-import { Timestamp } from 'firebase/firestore';
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/firestore';
 
 // Styled components
 const Container = styled.div`
@@ -230,7 +231,7 @@ export default function AdminCompetitions() {
         
         await updateCompetition(id, { 
           status: 'complete',
-          completedAt: Timestamp.now(),
+          completedAt: firebase.firestore.Timestamp.now(),
           winner: winnerData,
           seed: "0x" + Math.random().toString(16).substring(2, 10),
           blockHash: "0x" + Math.random().toString(16).substring(2, 66),
@@ -242,7 +243,7 @@ export default function AdminCompetitions() {
           comp.id === id ? { 
             ...comp, 
             status: 'complete',
-            completedAt: Timestamp.now(),
+            completedAt: firebase.firestore.Timestamp.now(),
             winner: winnerData
           } : comp
         ));
@@ -256,9 +257,9 @@ export default function AdminCompetitions() {
   };
 
   // Format timestamp to readable date
-  const formatDate = (timestamp: Timestamp | undefined) => {
+  const formatDate = (timestamp: firebase.firestore.Timestamp | undefined) => {
     if (!timestamp) return 'N/A';
-    return new Date(timestamp.seconds * 1000).toLocaleDateString();
+    return timestamp.toDate().toLocaleDateString();
   };
 
   if (loading) {

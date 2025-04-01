@@ -402,6 +402,30 @@ const Tab = styled.button<{ active: boolean }>`
   }
 `;
 
+const CompetitionImage = styled.div<{ imageUrl?: string }>`
+  height: 300px;
+  width: 100%;
+  border-radius: 0.75rem;
+  margin-bottom: 2rem;
+  background-color: hsl(var(--card));
+  background-image: ${props => props.imageUrl ? `url(${props.imageUrl})` : 'none'};
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.3);
+    border-radius: 0.75rem;
+    opacity: ${props => props.imageUrl ? 1 : 0};
+  }
+`;
+
 // Define SVG icons as components
 const ArrowLeftIcon = () => (
   <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -464,31 +488,39 @@ const formatTimeLeft = (endsAt: any) => {
   }
 };
 
-// Add missing styled components for How It Works section
+// Update How It Works section styling
 const HowItWorksSection = styled.section`
-  margin-top: 2rem;
-  padding: 1.5rem;
-  background-color: #f8f9fa;
-  border-radius: 8px;
+  margin-top: 3rem;
+  margin-bottom: 2rem;
 `;
 
 const Step = styled.div`
   display: flex;
-  margin-bottom: 1.5rem;
   align-items: flex-start;
+  gap: 1rem;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+  background-color: hsl(var(--card));
+  border-radius: 0.75rem;
+  transition: transform 0.2s, box-shadow 0.2s;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  }
 `;
 
 const StepNumber = styled.div`
-  background-color: #4f46e5;
+  background-color: hsl(var(--primary));
   color: white;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 9999px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: bold;
-  margin-right: 1rem;
+  font-size: 1.125rem;
   flex-shrink: 0;
 `;
 
@@ -498,15 +530,16 @@ const StepContent = styled.div`
 
 const StepTitle = styled.h4`
   margin: 0 0 0.5rem 0;
-  font-size: 1.1rem;
+  font-size: 1.125rem;
   font-weight: 600;
+  color: white;
 `;
 
 const StepDescription = styled.p`
   margin: 0;
-  color: #6b7280;
-  font-size: 0.9rem;
-  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.5;
+  font-size: 0.875rem;
 `;
 
 // Status components
@@ -857,6 +890,9 @@ export default function CompetitionPage() {
       
       <CompetitionLayout>
         <MainContent>
+          {competition.imageUrl && (
+            <CompetitionImage imageUrl={competition.imageUrl} />
+          )}
           <CompetitionHeader>
             <BadgeContainer>
               <Badge variant="status">
@@ -934,10 +970,10 @@ export default function CompetitionPage() {
               <Step>
                 <StepNumber>1</StepNumber>
                 <StepContent>
-                  <StepTitle>Buy Tickets</StepTitle>
+                  <StepTitle>Purchase Tickets</StepTitle>
                   <StepDescription>
-                    Purchase tickets for this competition using your credits. 
-                    Each ticket gives you one entry into the draw.
+                    Use your credits to buy raffle tickets. Each ticket gives you one entry in the draw 
+                    and increases your chances of winning. You can purchase multiple tickets for better odds.
                   </StepDescription>
                 </StepContent>
               </Step>
@@ -945,10 +981,11 @@ export default function CompetitionPage() {
               <Step>
                 <StepNumber>2</StepNumber>
                 <StepContent>
-                  <StepTitle>Wait for Draw</StepTitle>
+                  <StepTitle>Fair Random Drawing</StepTitle>
                   <StepDescription>
-                    Once all tickets are sold or the competition end date is reached, 
-                    a winner will be selected using our provably fair system.
+                    When all tickets are sold or the competition end date is reached, 
+                    a winner is selected using our provably fair system that ensures complete transparency 
+                    and randomness in the selection process.
                   </StepDescription>
                 </StepContent>
               </Step>
@@ -958,7 +995,8 @@ export default function CompetitionPage() {
                 <StepContent>
                   <StepTitle>Claim Your Prize</StepTitle>
                   <StepDescription>
-                    If you win, you will be notified and can claim your prize through your account.
+                    Winners are notified immediately, and prizes are delivered directly to your account. 
+                    No complicated claims process - just enjoy your winnings and good luck on your next entry!
                   </StepDescription>
                 </StepContent>
               </Step>

@@ -295,6 +295,15 @@ const CardImageContainer = styled.div`
   overflow: hidden;
 `;
 
+const CompetitionImage = styled.img`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: absolute;
+  top: 0;
+  left: 0;
+`;
+
 const IconContainer = styled.div`
   position: relative;
   z-index: 1;
@@ -773,11 +782,15 @@ export default function App() {
             {competitions.map((competition) => (
               <CompetitionCard key={competition.id} onClick={() => competition.id && handleViewCompetition(competition.id)}>
                 <CardImageContainer>
-                  <IconContainer>
-                    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" color="rgb(0, 174, 239)">
-                      <path d="M12 22a10 10 0 1 1 0-20 10 10 0 0 1 0 20zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm1-8.41l2.54 2.53a1 1 0 0 1-1.42 1.42L11.3 12.7A1 1 0 0 1 11 12V8a1 1 0 0 1 2 0v3.59z"/>
-                    </svg>
-                  </IconContainer>
+                  {competition.imageUrl ? (
+                    <CompetitionImage src={competition.imageUrl} alt={competition.title} />
+                  ) : (
+                    <IconContainer>
+                      <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" color="rgb(0, 174, 239)">
+                        <path d="M12 22a10 10 0 1 1 0-20 10 10 0 0 1 0 20zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm1-8.41l2.54 2.53a1 1 0 0 1-1.42 1.42L11.3 12.7A1 1 0 0 1 11 12V8a1 1 0 0 1 2 0v3.59z"/>
+                      </svg>
+                    </IconContainer>
+                  )}
                 </CardImageContainer>
                 <CardContent>
                   <CardBadgeContainer>

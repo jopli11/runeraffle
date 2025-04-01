@@ -1,188 +1,167 @@
-import { addDoc, collection, Timestamp, setDoc, doc } from 'firebase/firestore';
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/firestore';
 import { db } from '../config/firebase';
 import { Competition, User, Ticket } from '../services/firestore';
 
 // Sample competition data
-const sampleCompetitions: Omit<Competition, 'id' | 'createdAt' | 'updatedAt' | 'ticketsSold'>[] = [
-  {
-    title: 'Dragon Slayer Challenge',
-    description: 'Win the ultimate Dragon gear set and 100M OSRS Gold.',
-    prize: 'Dragon Gear + 100M OSRS Gold',
-    prizeValue: '100M OSRS Gold',
-    status: 'active',
-    difficulty: 'hard',
-    ticketPrice: 5,
-    totalTickets: 1000,
-    endsAt: Timestamp.fromDate(new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)), // 3 days from now
-  },
-  {
-    title: 'Goblin Slayer Raffle',
-    description: 'Win 10M OSRS Gold in this easy entry raffle.',
-    prize: '10M OSRS Gold',
-    prizeValue: '10M OSRS Gold',
-    status: 'active',
-    difficulty: 'easy',
-    ticketPrice: 2,
-    totalTickets: 500,
-    endsAt: Timestamp.fromDate(new Date(Date.now() + 5 * 24 * 60 * 60 * 1000)), // 5 days from now
-  },
-  {
-    title: 'Barrows Gear Raffle',
-    description: 'Complete set of Barrows equipment up for grabs!',
-    prize: 'Full Barrows Set',
-    prizeValue: 'Barrows Set',
-    status: 'ending',
-    difficulty: 'medium',
-    ticketPrice: 3,
-    totalTickets: 750,
-    endsAt: Timestamp.fromDate(new Date(Date.now() + 12 * 60 * 60 * 1000)), // 12 hours from now
-  },
-  {
-    title: 'Bandos Raffle',
-    description: 'Win the coveted Bandos armor set in this limited raffle.',
-    prize: 'Bandos Armor Set + 25M Gold',
-    prizeValue: 'Bandos Set + 25M',
-    status: 'active',
-    difficulty: 'hard',
-    ticketPrice: 4,
-    totalTickets: 300,
-    endsAt: Timestamp.fromDate(new Date(Date.now() + 4 * 24 * 60 * 60 * 1000)), // 4 days from now
-  },
-  {
-    title: 'Abyssal Whip Giveaway',
-    description: 'Legendary whip for the lucky winner!',
-    prize: 'Abyssal Whip + 5M OSRS Gold',
-    prizeValue: 'Whip + 5M Gold',
-    status: 'complete',
-    difficulty: 'medium',
-    ticketPrice: 2,
-    totalTickets: 500,
-    endsAt: Timestamp.fromDate(new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)), // 2 days ago
-    completedAt: Timestamp.fromDate(new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)),
-    winner: {
-      userId: 'user1',
-      username: 'DragonSlayer92',
-      email: 'dragonslayer92@example.com'
+export const seedCompetitions = async () => {
+  const competitions = [
+    {
+      title: 'Dragon Slayer Challenge',
+      description: 'Win epic dragon slayer gear and gold!',
+      prize: 'Full Dragon Slayer Kit + 50M OSRS GP',
+      prizeValue: '50M OSRS Gold',
+      status: 'active',
+      difficulty: 'medium',
+      ticketPrice: 150,
+      ticketsSold: 425,
+      totalTickets: 1000,
+      endsAt: firebase.firestore.Timestamp.fromDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000))
     },
-    seed: '7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069',
-    blockHash: '0000000000000000000725ec8c8b477bff8c0da1380b9862ec2e7a19c96b29b3',
-    winningTicket: 42
-  },
-  {
-    title: 'Armadyl Godsword Raffle',
-    description: 'One of the most powerful weapons in OSRS!',
-    prize: 'Armadyl Godsword + 10M OSRS Gold',
-    prizeValue: 'AGS + 10M Gold',
-    status: 'complete',
-    difficulty: 'hard',
-    ticketPrice: 5,
-    totalTickets: 800,
-    endsAt: Timestamp.fromDate(new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)), // 5 days ago
-    completedAt: Timestamp.fromDate(new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)),
-    winner: {
-      userId: 'user2',
-      username: 'GodSwordMaster',
-      email: 'godswordmaster@example.com'
+    {
+      title: 'Wilderness Warrior Pack',
+      description: 'Dominate the wilderness with this premium gear set!',
+      prize: 'Elite PK Gear + 25M OSRS GP',
+      prizeValue: '25M OSRS Gold',
+      status: 'active',
+      difficulty: 'hard',
+      ticketPrice: 200,
+      ticketsSold: 310,
+      totalTickets: 750,
+      endsAt: firebase.firestore.Timestamp.fromDate(new Date(Date.now() + 5 * 24 * 60 * 60 * 1000))
     },
-    seed: '3c6e0b8a9c15224a8228b9a98ca1531d5f3d8d474c9c7b1bc37ea1c77d3f6db7',
-    blockHash: '00000000000000000003b78c64bdb9077616db74d3756fd98865050ea191ec82',
-    winningTicket: 123
+    {
+      title: 'Beginner\'s Treasure',
+      description: 'Perfect starter pack for new adventurers',
+      prize: 'Starter Kit + 10M OSRS GP',
+      prizeValue: '10M OSRS Gold',
+      status: 'active',
+      difficulty: 'easy',
+      ticketPrice: 75,
+      ticketsSold: 850,
+      totalTickets: 1000,
+      endsAt: firebase.firestore.Timestamp.fromDate(new Date(Date.now() + 3 * 24 * 60 * 60 * 1000))
+    },
+    {
+      title: 'Elite Skiller Bundle',
+      description: 'Boost your skilling with these rare materials and tools',
+      prize: 'Ultimate Skilling Package + 30M OSRS GP',
+      prizeValue: '30M OSRS Gold',
+      status: 'ending',
+      difficulty: 'medium',
+      ticketPrice: 175,
+      ticketsSold: 925,
+      totalTickets: 1000,
+      endsAt: firebase.firestore.Timestamp.fromDate(new Date(Date.now() + 1 * 24 * 60 * 60 * 1000))
+    },
+    {
+      title: 'Grandmaster Quest Gear',
+      description: 'Complete the hardest quests with this specialized gear',
+      prize: 'Questmaster Kit + 40M OSRS GP',
+      prizeValue: '40M OSRS Gold',
+      status: 'complete',
+      difficulty: 'hard',
+      ticketPrice: 225,
+      ticketsSold: 1000,
+      totalTickets: 1000,
+      endsAt: firebase.firestore.Timestamp.fromDate(new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)),
+      completedAt: firebase.firestore.Timestamp.fromDate(new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)),
+      winner: {
+        userId: 'demo-user-1',
+        username: 'QuestMaster99',
+        email: 'winner@example.com'
+      },
+      seed: '0x123456789abcdef',
+      blockHash: '0x987654321fedcba0987654321fedcba0987654321fedcba0987654321fedcba',
+      winningTicket: 777
+    }
+  ];
+
+  // Add each competition to the firestore
+  for (const competition of competitions) {
+    try {
+      const competitionWithTimestamps = {
+        ...competition,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      
+      // Add to competitions collection
+      await db.collection('competitions').add(competitionWithTimestamps);
+      console.log(`Added competition: ${competition.title}`);
+    } catch (error) {
+      console.error(`Error adding competition ${competition.title}:`, error);
+    }
   }
-];
+};
 
 // Sample user data
-const sampleUsers: Omit<User, 'id' | 'createdAt' | 'updatedAt'>[] = [
-  {
-    email: 'admin@runeraffle.com',
-    displayName: 'Admin',
-    credits: 1000,
-    isAdmin: true
-  },
-  {
-    email: 'user@example.com',
-    displayName: 'Regular User',
-    credits: 100,
-    isAdmin: false
-  },
-  {
-    email: 'dragonslayer92@example.com',
-    displayName: 'DragonSlayer92',
-    credits: 250,
-    isAdmin: false
-  },
-  {
-    email: 'godswordmaster@example.com',
-    displayName: 'GodSwordMaster',
-    credits: 300,
-    isAdmin: false
-  }
-];
+export const seedUsers = async () => {
+  const users = [
+    {
+      email: 'admin@runeraffle.com',
+      displayName: 'Admin User',
+      credits: 1000,
+      isAdmin: true
+    },
+    {
+      email: 'user@example.com',
+      displayName: 'Demo User',
+      credits: 500,
+      isAdmin: false
+    }
+  ];
 
-// Function to seed the database
-export const seedDatabase = async (): Promise<void> => {
-  try {
-    console.log('Seeding database...');
-    
-    // Seed users
-    console.log('Seeding users...');
-    for (const user of sampleUsers) {
-      await setDoc(doc(db, 'users', user.email), {
+  // Add each user to the firestore
+  for (const user of users) {
+    try {
+      const userWithTimestamps = {
         ...user,
-        createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now()
-      });
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      
+      // Set user document with email as ID
+      await db.collection('users').doc(user.email).set(userWithTimestamps);
+      console.log(`Added user: ${user.email}`);
+    } catch (error) {
+      console.error(`Error adding user ${user.email}:`, error);
     }
-    
-    // Seed competitions
-    console.log('Seeding competitions...');
-    const competitionsRef = collection(db, 'competitions');
-    const competitionsIds: string[] = [];
-    
-    for (const competition of sampleCompetitions) {
-      const ticketsSold = competition.status === 'complete' 
-        ? competition.totalTickets 
-        : Math.floor(Math.random() * competition.totalTickets * 0.8);
-      
-      const docRef = await addDoc(competitionsRef, {
-        ...competition,
-        ticketsSold,
-        createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now()
-      });
-      
-      competitionsIds.push(docRef.id);
+  }
+};
+
+// Sample ticket data
+export const seedTickets = async () => {
+  // Get a reference to the first active competition and user
+  const competitionsSnapshot = await db.collection('competitions').where('status', '==', 'active').limit(1).get();
+  const userSnapshot = await db.collection('users').where('email', '==', 'user@example.com').get();
+  
+  if (competitionsSnapshot.empty || userSnapshot.empty) {
+    console.error('Could not find competition or user to seed tickets');
+    return;
+  }
+  
+  const competitionDoc = competitionsSnapshot.docs[0];
+  const competition = { id: competitionDoc.id, ...competitionDoc.data() } as Competition;
+  const userDoc = userSnapshot.docs[0];
+  const user = { id: userDoc.id, ...userDoc.data() } as User;
+  
+  // Create some tickets
+  const tickets = Array.from({ length: 5 }, (_, i) => ({
+    competitionId: competition.id as string,
+    userId: user.email,
+    ticketNumber: i + 1,
+    isWinner: false,
+    purchasedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }));
+  
+  // Add each ticket to the firestore
+  for (const ticket of tickets) {
+    try {
+      await db.collection('tickets').add(ticket);
+      console.log(`Added ticket #${ticket.ticketNumber} for competition ${competition.title}`);
+    } catch (error) {
+      console.error(`Error adding ticket #${ticket.ticketNumber}:`, error);
     }
-    
-    // Seed tickets for active competitions
-    console.log('Seeding tickets...');
-    const ticketsRef = collection(db, 'tickets');
-    const userIds = ['user1', 'user2', 'user3']; // Fake user IDs for tickets
-    
-    for (let i = 0; i < competitionsIds.length; i++) {
-      const competitionId = competitionsIds[i];
-      const competition = sampleCompetitions[i];
-      
-      // Skip if competition is not active
-      if (competition.status === 'complete') continue;
-      
-      // Create some tickets
-      const ticketCount = Math.floor(Math.random() * 50) + 10; // Between 10 and 60 tickets
-      
-      for (let j = 0; j < ticketCount; j++) {
-        const userId = userIds[Math.floor(Math.random() * userIds.length)];
-        
-        await addDoc(ticketsRef, {
-          competitionId,
-          userId,
-          ticketNumber: j + 1,
-          purchasedAt: Timestamp.now(),
-          isWinner: false
-        });
-      }
-    }
-    
-    console.log('Database seeded successfully!');
-  } catch (error) {
-    console.error('Error seeding database:', error);
   }
 }; 

@@ -1,6 +1,6 @@
-import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, User, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/auth';
+import 'firebase/compat/firestore';
 
 // Your web app's Firebase configuration
 export const firebaseConfig = {
@@ -13,15 +13,18 @@ export const firebaseConfig = {
 };
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const googleProvider = new GoogleAuthProvider();
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
+
+const auth = firebase.auth();
+const db = firebase.firestore();
+const googleProvider = new firebase.auth.GoogleAuthProvider();
 
 // Authentication functions
 export const signInWithGoogle = async () => {
   try {
-    const result = await signInWithPopup(auth, googleProvider);
+    const result = await auth.signInWithPopup(googleProvider);
     return result.user;
   } catch (error) {
     console.error("Error signing in with Google: ", error);
@@ -31,7 +34,7 @@ export const signInWithGoogle = async () => {
 
 export const registerWithEmail = async (email: string, password: string) => {
   try {
-    const result = await createUserWithEmailAndPassword(auth, email, password);
+    const result = await auth.createUserWithEmailAndPassword(email, password);
     return result.user;
   } catch (error) {
     console.error("Error registering with email: ", error);
@@ -41,7 +44,7 @@ export const registerWithEmail = async (email: string, password: string) => {
 
 export const loginWithEmail = async (email: string, password: string) => {
   try {
-    const result = await signInWithEmailAndPassword(auth, email, password);
+    const result = await auth.signInWithEmailAndPassword(email, password);
     return result.user;
   } catch (error) {
     console.error("Error logging in with email: ", error);
@@ -51,19 +54,19 @@ export const loginWithEmail = async (email: string, password: string) => {
 
 export const logOut = async () => {
   try {
-    await signOut(auth);
+    await auth.signOut();
   } catch (error) {
     console.error("Error signing out: ", error);
     throw error;
   }
 };
 
-export const getCurrentUser = (): User | null => {
+export const getCurrentUser = () => {
   return auth.currentUser;
 };
 
-export const onUserStateChanged = (callback: (user: User | null) => void) => {
-  return onAuthStateChanged(auth, callback);
+export const onUserStateChanged = (callback: (user: firebase.User | null) => void) => {
+  return auth.onAuthStateChanged(callback);
 };
 
 export { auth, db }; 
