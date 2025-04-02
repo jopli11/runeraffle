@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styled from '@emotion/styled';
 import { useAuth } from '../../context/AuthContext';
 import { getUserSupportTickets, SupportTicket, getTicketMessages, TicketMessage, addTicketMessage } from '../../services/firestore';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const Container = styled.div`
   width: 100%;
@@ -16,17 +17,25 @@ const Title = styled.h2`
 
 const EmptyState = styled.div`
   text-align: center;
-  padding: 2rem;
+  padding: 3rem;
   color: hsl(var(--muted-foreground));
+  background: hsla(var(--muted), 0.03);
+  border-radius: 0.75rem;
+  border: 1px dashed hsl(var(--border));
 `;
 
 const TicketsList = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  max-height: 500px;
-  overflow-y: auto;
-  padding-right: 0.5rem;
+  gap: 1rem;
+  max-height: none;
+  overflow-y: visible;
+  
+  @media (min-width: 1024px) {
+    max-height: 600px;
+    overflow-y: auto;
+    padding-right: 1rem;
+  }
   
   /* Scrollbar styling */
   &::-webkit-scrollbar {
@@ -45,9 +54,9 @@ const TicketsList = styled.div`
 `;
 
 const TicketItem = styled.div<{ isSelected?: boolean }>`
-  padding: 1.25rem;
+  padding: 1.5rem;
   border-radius: 0.75rem;
-  background: ${props => props.isSelected ? 'hsla(var(--primary), 0.08)' : 'hsl(var(--card))'};
+  background: ${props => props.isSelected ? 'hsla(var(--primary), 0.08)' : 'hsla(var(--background), 0.8)'};
   border: 1px solid ${props => props.isSelected ? 'hsla(var(--primary), 0.3)' : 'hsl(var(--border))'};
   cursor: pointer;
   transition: all 0.2s;
@@ -142,26 +151,26 @@ const TicketMetadata = styled.div`
 
 const TicketDetails = styled.div`
   margin-top: 0;
-  padding: 1.5rem;
-  background: hsl(var(--card));
+  padding: 2rem;
+  background: hsla(var(--background), 0.5);
   border: 1px solid hsl(var(--border));
   border-radius: 0.75rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 `;
 
 const TicketInfo = styled.div`
-  margin-bottom: 1.5rem;
+  margin-bottom: 2rem;
 `;
 
 const InfoRow = styled.div`
   display: flex;
-  margin-bottom: 0.5rem;
-  font-size: 0.875rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
 `;
 
 const InfoLabel = styled.div`
   width: 120px;
-  font-weight: 500;
+  font-weight: 600;
   color: hsl(var(--muted-foreground));
 `;
 
@@ -170,12 +179,13 @@ const InfoValue = styled.div`
 `;
 
 const Description = styled.div`
-  padding: 1rem;
+  padding: 1.5rem;
   background: hsl(var(--background));
   border-radius: 0.5rem;
   white-space: pre-wrap;
-  margin-bottom: 1.5rem;
-  font-size: 0.875rem;
+  margin-bottom: 2rem;
+  font-size: 0.9rem;
+  border: 1px solid hsl(var(--border));
 `;
 
 const Messages = styled.div`
@@ -183,14 +193,25 @@ const Messages = styled.div`
 `;
 
 const MessagesTitle = styled.h3`
-  font-size: 1.125rem;
+  font-size: 1.25rem;
   font-weight: 600;
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
+  position: relative;
+  
+  &:after {
+    content: '';
+    position: absolute;
+    bottom: -0.5rem;
+    left: 0;
+    width: 3rem;
+    height: 2px;
+    background-color: hsl(var(--primary));
+  }
 `;
 
 const Message = styled.div<{ isAdmin?: boolean }>`
   display: flex;
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
   flex-direction: ${props => props.isAdmin ? 'row' : 'row-reverse'};
 `;
 
@@ -290,12 +311,15 @@ const NoTicketSelected = styled.div`
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 3rem 1rem;
+  padding: 5rem 1rem;
   color: hsl(var(--muted-foreground));
   text-align: center;
+  background: hsla(var(--muted), 0.03);
+  border-radius: 0.75rem;
+  border: 1px dashed hsl(var(--border));
   
   svg {
-    margin-bottom: 1rem;
+    margin-bottom: 1.5rem;
     color: hsla(var(--muted), 0.5);
   }
 `;
@@ -310,22 +334,22 @@ const LoadingSpinner = styled.div`
 
 const Layout = styled.div`
   display: grid;
-  grid-template-columns: 1fr 2fr;
-  gap: 1.5rem;
+  grid-template-columns: 1fr;
+  gap: 2rem;
   
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
+  @media (min-width: 1024px) {
+    grid-template-columns: 2fr 3fr;
   }
 `;
 
 const TicketsListContainer = styled.div`
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
     display: ${props => props.hidden ? 'none' : 'block'};
   }
 `;
 
 const TicketDetailsContainer = styled.div`
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
     display: ${props => props.hidden ? 'none' : 'block'};
   }
 `;
@@ -336,12 +360,13 @@ const BackButton = styled.button`
   gap: 0.5rem;
   background: none;
   border: none;
-  padding: 0.5rem;
+  padding: 0.75rem;
   color: hsl(var(--primary));
   cursor: pointer;
   margin-bottom: 1rem;
+  font-weight: 500;
   
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
     display: flex;
   }
 `;
@@ -357,26 +382,68 @@ const formatDate = (timestamp: any): string => {
   }
 };
 
-export function UserTickets() {
+// Add interface for component props
+interface UserTicketsProps {
+  onTicketUpdate?: () => void;
+  initialTicketId?: string;
+}
+
+const UserTickets: React.FC<UserTicketsProps> = ({ onTicketUpdate, initialTicketId }) => {
   const { currentUser } = useAuth();
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
   const [messages, setMessages] = useState<TicketMessage[]>([]);
   const [reply, setReply] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
   const [showList, setShowList] = useState(true);
   const [showDetails, setShowDetails] = useState(false);
-  const [loadingMessages, setLoadingMessages] = useState(false);
   
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Parse query parameters
+  const getQueryParam = (name: string): string | null => {
+    const searchParams = new URLSearchParams(location.search);
+    return searchParams.get(name);
+  };
+
   useEffect(() => {
-    if (!currentUser) return;
-    
     const loadTickets = async () => {
+      if (!currentUser) return;
+      
       try {
         setLoading(true);
         const userTickets = await getUserSupportTickets(currentUser.uid);
         setTickets(userTickets);
+        
+        // Check for ticketId in URL or from props
+        const ticketIdToLoad = getQueryParam('ticketId') || initialTicketId;
+        console.log('Looking for ticket ID:', ticketIdToLoad);
+        
+        if (ticketIdToLoad) {
+          // Find the ticket in the loaded tickets
+          const ticketToSelect = userTickets.find(ticket => ticket.id === ticketIdToLoad);
+          
+          if (ticketToSelect) {
+            console.log('Found ticket:', ticketToSelect.subject);
+            setSelectedTicket(ticketToSelect);
+            
+            // Load messages for this ticket
+            if (ticketToSelect.id) {
+              await loadMessages(ticketToSelect.id);
+            }
+            
+            // On mobile, show details and hide list
+            if (window.innerWidth <= 1024) {
+              setShowList(false);
+              setShowDetails(true);
+            }
+          } else {
+            console.log('Ticket ID not found in user tickets');
+          }
+        }
       } catch (error) {
         console.error('Error loading tickets:', error);
       } finally {
@@ -385,11 +452,9 @@ export function UserTickets() {
     };
     
     loadTickets();
-  }, [currentUser]);
+  }, [currentUser, location.search, initialTicketId]);
   
   const loadMessages = async (ticketId: string) => {
-    if (!ticketId) return;
-    
     try {
       setLoadingMessages(true);
       const ticketMessages = await getTicketMessages(ticketId);
@@ -405,10 +470,13 @@ export function UserTickets() {
     setSelectedTicket(ticket);
     if (ticket.id) {
       loadMessages(ticket.id);
+      
+      // Update URL with ticketId query parameter without full page reload
+      navigate(`/support?ticketId=${ticket.id}`, { replace: true });
     }
     
     // On mobile, show details and hide list
-    if (window.innerWidth <= 768) {
+    if (window.innerWidth <= 1024) {
       setShowList(false);
       setShowDetails(true);
     }
@@ -417,6 +485,9 @@ export function UserTickets() {
   const handleBackToList = () => {
     setShowList(true);
     setShowDetails(false);
+    
+    // Remove ticketId from URL
+    navigate('/support', { replace: true });
   };
   
   const handleSubmitReply = async (e: React.FormEvent) => {
@@ -429,7 +500,7 @@ export function UserTickets() {
     try {
       setSending(true);
       
-      // Add message
+      // Add message - notification will be handled in the service layer
       await addTicketMessage({
         ticketId: selectedTicket.id,
         userId: currentUser.uid,
@@ -440,6 +511,11 @@ export function UserTickets() {
       // Clear reply and reload messages
       setReply('');
       await loadMessages(selectedTicket.id);
+      
+      // Call the onTicketUpdate prop if provided
+      if (onTicketUpdate) {
+        onTicketUpdate();
+      }
     } catch (error) {
       console.error('Error sending reply:', error);
     } finally {
@@ -514,7 +590,7 @@ export function UserTickets() {
             </TicketsList>
           </TicketsListContainer>
           
-          <TicketDetailsContainer hidden={!showDetails && window.innerWidth <= 768}>
+          <TicketDetailsContainer hidden={!showDetails && window.innerWidth <= 1024}>
             {selectedTicket ? (
               <TicketDetails>
                 <BackButton onClick={handleBackToList}>
@@ -625,4 +701,6 @@ export function UserTickets() {
       )}
     </Container>
   );
-} 
+};
+
+export default UserTickets; 

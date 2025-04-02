@@ -6,11 +6,12 @@ import { db } from '../config/firebase';
 export interface Notification {
   id?: string;
   userId: string;
-  type: 'competition_ending' | 'ticket_purchase' | 'competition_winner' | 'credit_update' | 'system';
+  type: 'competition_ending' | 'ticket_purchase' | 'competition_winner' | 'credit_update' | 'system' | 'ticket_update';
   title: string;
   message: string;
   competitionId?: string;
   ticketId?: string;
+  supportTicketId?: string;
   imageUrl?: string;
   read: boolean;
   createdAt: firebase.firestore.Timestamp;
@@ -39,13 +40,40 @@ export const createNotification = async (
  * Get all notifications for a user
  */
 export const getUserNotifications = async (userId: string): Promise<Notification[]> => {
-  const snapshot = await notificationsRef
-    .where('userId', '==', userId)
-    .orderBy('createdAt', 'desc')
-    .limit(50) // Limit to the 50 most recent notifications
-    .get();
-  
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as Notification }));
+  try {
+    console.log(`Getting notifications for user ID: ${userId}`);
+    const snapshot = await notificationsRef
+      .where('userId', '==', userId)
+      .orderBy('createdAt', 'desc')
+      .limit(50) // Limit to the 50 most recent notifications
+      .get();
+    
+    console.log(`Found ${snapshot.size} notifications for user ${userId}`);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as Notification }));
+  } catch (error) {
+    // Check if this is an index error
+    if (error instanceof Error && error.message.includes('requires an index')) {
+      console.error(`
+        ------------------------------------------------------------
+        MISSING FIRESTORE INDEX DETECTED!
+        
+        Your notification query requires a Firestore index that does not exist yet.
+        Follow these steps to fix it:
+        
+        1. Go to your Firebase Console
+        2. Navigate to Firestore Database → Indexes
+        3. Create a new composite index with:
+           - Collection: notifications
+           - Fields:
+             - userId (Ascending)
+             - createdAt (Descending)
+        
+        Or click this link in the error message to create it automatically.
+        ------------------------------------------------------------
+      `);
+    }
+    throw error;
+  }
 };
 
 /**
@@ -186,4 +214,85 @@ export const sendSystemNotification = async (
     title,
     message
   });
-}; 
+};
+
+/**
+ * Create a notification for a support ticket update
+ */
+export const notifyTicketUpdate = async (
+  userId: string,
+  ticketId: string,
+  ticketSubject: string,
+  updatedBy: 'admin' | 'user',
+  statusChange?: string
+): Promise<string> => {
+  console.log(`Creating ticket notification for user ID: ${userId}`, {
+    ticketId,
+    ticketSubject,
+    updatedBy,
+    statusChange
+  });
+  
+  let title = 'Support Ticket Updated';
+  let message = '';
+  
+  if (statusChange === 'test') {
+    message = `This is a test notification for ticket "${ticketSubject}". If you're seeing this, notifications are working properly.`;
+    title = 'Test Notification';
+  } else if (statusChange === 'new') {
+    message = `New support ticket created: "${ticketSubject}"`;
+    title = 'New Support Ticket';
+  } else if (statusChange === 'assigned') {
+    message = `You have been assigned to support ticket: "${ticketSubject}"`;
+    title = 'Ticket Assigned';
+  } else if (statusChange === 'unassigned') {
+    message = `You have been unassigned from support ticket: "${ticketSubject}"`;
+    title = 'Ticket Unassigned';
+  } else if (statusChange) {
+    message = `Your ticket "${ticketSubject}" status has been changed to ${statusChange}.`;
+    title = 'Ticket Status Changed';
+  } else if (updatedBy === 'admin') {
+    message = `An admin has replied to your ticket "${ticketSubject}".`;
+    title = 'New Admin Response';
+  } else {
+    message = `New message from user in ticket "${ticketSubject}".`;
+    title = 'New User Message';
+  }
+  
+  try {
+    const notificationId = await createNotification({
+      userId,
+      type: 'ticket_update',
+      title,
+      message,
+      supportTicketId: ticketId
+    });
+    
+    console.log(`Successfully created notification (ID: ${notificationId}) for user ${userId}`);
+    
+    return notificationId;
+  } catch (error) {
+    console.error(`Failed to create notification for user ${userId}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Debug function to check if a notification exists for a user
+ */
+/* export const debugCheckNotification = async (userId: string): Promise<void> => {
+  try {
+    console.log(`Checking notifications for user ID: ${userId}`);
+    const notifications = await getUserNotifications(userId);
+    console.log(`Found ${notifications.length} notifications for user ${userId}:`, 
+      notifications.map(n => ({ 
+        id: n.id, 
+        title: n.title, 
+        message: n.message.substring(0, 30) + (n.message.length > 30 ? '...' : ''),
+        createdAt: n.createdAt
+      }))
+    );
+  } catch (error) {
+    console.error(`Error checking notifications for user ${userId}:`, error);
+  }
+}; */ 

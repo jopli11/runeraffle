@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import styled from '@emotion/styled';
 import { useAuth } from '../../context/AuthContext';
 import { getUserTickets, getCompetition } from '../../services/firestore';
-import { NewTicketForm } from '../support/NewTicketForm';
-import { UserTickets } from '../support/UserTickets';
 import { Dashboard } from './Dashboard';
 import { useNavigate } from 'react-router-dom';
 import { Loader } from '../ui/Loader';
@@ -285,7 +283,7 @@ const ActionButton = styled.button`
 export function ProfilePage() {
   const { currentUser, isLoading, isAdmin } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'profile' | 'orders' | 'support' | 'referrals'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'orders' | 'referrals'>('profile');
   const [ticketHistory, setTicketHistory] = useState<any[]>([]);
   const [isLoadingTickets, setIsLoadingTickets] = useState(false);
   
@@ -376,8 +374,7 @@ export function ProfilePage() {
               My Tickets
             </NavItem>
             <NavItem 
-              active={activeTab === 'support'} 
-              onClick={() => setActiveTab('support')}
+              onClick={() => navigate('/support')}
             >
               Support
             </NavItem>
@@ -476,29 +473,6 @@ export function ProfilePage() {
             </Section>
           )}
           
-          {activeTab === 'support' && (
-            <SupportSection>
-              <SectionTitle>Support</SectionTitle>
-              
-              <SupportContainer>
-                <StyledContainer withGlow>
-                  <SupportIntro>
-                    If you need assistance with your purchases, prizes, or have questions about our service, please submit a ticket below. Our team will respond as soon as possible.
-                  </SupportIntro>
-                  
-                  <SupportCard>
-                    <NewTicketForm />
-                  </SupportCard>
-                </StyledContainer>
-                
-                <SupportDivider />
-                
-                <SupportCardTitle>Your Tickets</SupportCardTitle>
-                <UserTickets />
-              </SupportContainer>
-            </SupportSection>
-          )}
-
           {activeTab === 'referrals' && (
             <Section>
               <SectionTitle>My Referrals</SectionTitle>

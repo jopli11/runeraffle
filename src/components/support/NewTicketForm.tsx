@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 
 const FormContainer = styled.div`
   width: 100%;
-  background: hsl(var(--card));
+  background: hsla(var(--background), 0.5);
   border-radius: 0.75rem;
   border: 1px solid hsl(var(--border));
   overflow: hidden;
@@ -20,21 +20,23 @@ const FormContainer = styled.div`
 `;
 
 const FormHeader = styled.div`
-  padding: 1.5rem 1.5rem;
-  background: linear-gradient(to right, hsl(var(--primary)), hsl(265, 83%, 45%));
-  color: white;
+  padding: 2rem 2rem 1.5rem;
+  border-bottom: 1px solid hsl(var(--border));
 `;
 
 const FormTitle = styled.h2`
-  font-size: 1.25rem;
+  font-size: 1.5rem;
   font-weight: 600;
   margin: 0;
+  background: linear-gradient(to right, hsl(var(--primary)), hsl(265, 83%, 45%));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 `;
 
 const FormSubtitle = styled.p`
-  margin: 0.5rem 0 0;
-  opacity: 0.9;
-  font-size: 0.9rem;
+  margin: 0.75rem 0 0;
+  font-size: 1rem;
+  color: hsl(var(--muted-foreground));
 `;
 
 const FormBody = styled.div`
@@ -42,25 +44,26 @@ const FormBody = styled.div`
 `;
 
 const FormGroup = styled.div`
-  margin-bottom: 1.25rem;
+  margin-bottom: 1.5rem;
 `;
 
 const Label = styled.label`
   display: block;
-  font-size: 0.875rem;
-  font-weight: 500;
-  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
   color: hsl(var(--foreground));
 `;
 
 const Input = styled.input`
   width: 100%;
-  padding: 0.75rem;
+  padding: 0.875rem;
   background: hsl(var(--background));
   border: 1px solid hsl(var(--border));
-  border-radius: 0.375rem;
+  border-radius: 0.5rem;
   color: hsl(var(--foreground));
   transition: all 0.2s ease;
+  font-size: 0.95rem;
   
   &:focus {
     outline: none;
@@ -71,17 +74,22 @@ const Input = styled.input`
 
 const Select = styled.select`
   width: 100%;
-  padding: 0.75rem;
+  padding: 0.875rem;
   background: hsl(var(--background));
   border: 1px solid hsl(var(--border));
-  border-radius: 0.375rem;
+  border-radius: 0.5rem;
   color: hsl(var(--foreground));
   transition: all 0.2s ease;
+  font-size: 0.95rem;
   
   &:focus {
     outline: none;
     border-color: hsl(var(--primary));
     box-shadow: 0 0 0 2px hsla(var(--primary), 0.2);
+  }
+  
+  option {
+    padding: 0.5rem;
   }
 `;
 
@@ -91,14 +99,15 @@ const CompetitionSelect = styled(Select)`
 
 const Textarea = styled.textarea`
   width: 100%;
-  min-height: 120px;
-  padding: 0.75rem;
+  min-height: 150px;
+  padding: 0.875rem;
   background: hsl(var(--background));
   border: 1px solid hsl(var(--border));
-  border-radius: 0.375rem;
+  border-radius: 0.5rem;
   color: hsl(var(--foreground));
   resize: vertical;
   transition: all 0.2s ease;
+  font-size: 0.95rem;
   
   &:focus {
     outline: none;
@@ -114,18 +123,20 @@ const ButtonContainer = styled.div`
 `;
 
 const SubmitButton = styled.button`
-  padding: 0.75rem 1.5rem;
+  padding: 0.875rem 1.75rem;
   background: hsl(var(--primary));
   color: white;
   border: none;
-  border-radius: 0.375rem;
-  font-weight: 500;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  font-size: 1rem;
   cursor: pointer;
   transition: all 0.2s ease;
   
   &:hover:not(:disabled) {
     background: hsl(265, 83%, 45%);
-    transform: translateY(-1px);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
   }
   
   &:active:not(:disabled) {
@@ -369,9 +380,19 @@ export function NewTicketForm({
             </InfoCard>
           )}
           <ButtonContainer>
-            <SubmitButton onClick={() => setSuccess(false)}>
+            <SubmitButton 
+              style={{ marginRight: '1rem' }}
+              onClick={() => setSuccess(false)}
+            >
               Create Another Ticket
             </SubmitButton>
+            {ticketId && (
+              <SubmitButton
+                onClick={() => navigate(`/support?ticketId=${ticketId}`)}
+              >
+                View Ticket
+              </SubmitButton>
+            )}
           </ButtonContainer>
         </FormBody>
       </FormContainer>

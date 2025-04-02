@@ -9,7 +9,7 @@ import DatabaseSeeder from './DatabaseSeeder';
 import { CompetitionProcessor } from './CompetitionProcessor';
 import AdminSupportTickets from './AdminSupportTickets';
 import AdminAnalytics from './AdminAnalytics';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 // Styled components
 const Container = styled.div`
@@ -158,6 +158,21 @@ export default function AdminDashboard() {
   const { currentUser, isLoading, isAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState<'competitions' | 'users' | 'winners' | 'create' | 'seeder' | 'processor' | 'support' | 'analytics'>('competitions');
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Extract query parameters from URL
+  useEffect(() => {
+    // Parse query parameters
+    const searchParams = new URLSearchParams(location.search);
+    const tab = searchParams.get('tab');
+    
+    // If tab parameter exists and matches a valid tab, set it active
+    if (tab === 'support' || tab === 'competitions' || tab === 'users' || 
+        tab === 'winners' || tab === 'create' || tab === 'seeder' || 
+        tab === 'processor' || tab === 'analytics') {
+      setActiveTab(tab);
+    }
+  }, [location.search]);
 
   useEffect(() => {
     if (!currentUser || !isAdmin) {

@@ -85,6 +85,14 @@ const NotificationList = styled.div`
   overflow-y: auto;
 `;
 
+const LoadingIndicator = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+  color: hsl(var(--muted-foreground));
+`;
+
 const NotificationItem = styled.div<{ isRead: boolean }>`
   padding: 1rem;
   border-bottom: 1px solid hsl(var(--border));
@@ -152,10 +160,11 @@ const formatNotificationTime = (timestamp: any): string => {
 };
 
 export default function NotificationCenter() {
-  const { currentUser } = useAuth();
+  const { currentUser, isAdmin } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   
@@ -163,12 +172,47 @@ export default function NotificationCenter() {
     const loadNotifications = async () => {
       if (!currentUser) return;
       
+      setLoading(true);
       try {
-        const userNotifications = await getUserNotifications(currentUser.uid);
-        setNotifications(userNotifications);
-        setUnreadCount(userNotifications.filter(n => !n.read).length);
+        console.log('Loading notifications for user:', currentUser.uid);
+        
+        // First, get notifications using the Firebase Auth UID
+        const uidNotifications = await getUserNotifications(currentUser.uid);
+        console.log(`Found ${uidNotifications.length} notifications for user.uid: ${currentUser.uid}`);
+        
+        let allNotifications = [...uidNotifications];
+        
+        // If the user has an email, also try to get notifications with that ID
+        if (currentUser.email) {
+          try {
+            console.log('Also checking for notifications with email:', currentUser.email);
+            const emailNotifications = await getUserNotifications(currentUser.email);
+            console.log(`Found ${emailNotifications.length} notifications for user.email: ${currentUser.email}`);
+            
+            // Add email notifications that aren't already in the list (avoid duplicates by ID)
+            const existingIds = new Set(allNotifications.map(n => n.id));
+            const uniqueEmailNotifications = emailNotifications.filter(n => n.id && !existingIds.has(n.id));
+            
+            console.log(`Adding ${uniqueEmailNotifications.length} unique notifications from email lookup`);
+            allNotifications = [...allNotifications, ...uniqueEmailNotifications];
+          } catch (emailError) {
+            console.error('Error loading notifications by email:', emailError);
+          }
+        }
+        
+        // Sort notifications by created time (newest first)
+        allNotifications.sort((a, b) => {
+          if (!a.createdAt || !b.createdAt) return 0;
+          return b.createdAt.seconds - a.createdAt.seconds;
+        });
+        
+        console.log(`Total combined notifications: ${allNotifications.length}`);
+        setNotifications(allNotifications);
+        setUnreadCount(allNotifications.filter(n => !n.read).length);
       } catch (error) {
         console.error('Error loading notifications:', error);
+      } finally {
+        setLoading(false);
       }
     };
     
@@ -202,19 +246,66 @@ export default function NotificationCenter() {
       }
     }
     
-    // Navigate based on notification type
-    if (notification.competitionId) {
-      navigate(`/competition/${notification.competitionId}`);
-    }
-    
+    // Close the panel first
     setIsOpen(false);
+    
+    // Add a small delay to allow the panel to close before navigation
+    setTimeout(() => {
+      console.log('Navigating based on notification type:', {
+        type: notification.type,
+        competitionId: notification.competitionId,
+        supportTicketId: notification.supportTicketId
+      });
+      
+      // Navigate based on notification type
+      if (notification.type === 'ticket_update' && notification.supportTicketId) {
+        console.log(`Navigating to support ticket: ${notification.supportTicketId}`);
+        // Direct admins to admin support page, regular users to the user support page
+        if (isAdmin) {
+          // Use the proper route for admin support
+          const ticketId = notification.supportTicketId;
+          navigate(`/admin?tab=support&ticketId=${ticketId}`);
+        } else {
+          navigate(`/support?ticketId=${notification.supportTicketId}`);
+        }
+      } else if (notification.type === 'competition_winner' && notification.competitionId) {
+        console.log(`Navigating to winner competition: ${notification.competitionId}`);
+        navigate(`/competition/${notification.competitionId}`);
+      } else if (notification.competitionId) {
+        console.log(`Navigating to competition: ${notification.competitionId}`);
+        navigate(`/competition/${notification.competitionId}`);
+      } else if (notification.type === 'ticket_purchase' && notification.ticketId) {
+        console.log(`Navigating to ticket details: ${notification.ticketId}`);
+        navigate(`/profile/tickets?ticketId=${notification.ticketId}`);
+      } else if (notification.type === 'credit_update') {
+        console.log('Navigating to profile/credits');
+        navigate('/profile/credits');
+      } else if (notification.type === 'system') {
+        // Default for system notifications is to do nothing
+        console.log('System notification - no specific navigation');
+      } else {
+        // Default fallback if no specific route is determined
+        console.log('No specific navigation path for this notification type');
+      }
+    }, 100); // Small delay for better UX
   };
   
   const handleMarkAllRead = async () => {
     if (!currentUser) return;
     
     try {
+      // Mark all notifications read for Firebase Auth UID
       await markAllNotificationsRead(currentUser.uid);
+      
+      // Also mark all notifications read for email if it exists
+      if (currentUser.email) {
+        try {
+          await markAllNotificationsRead(currentUser.email);
+        } catch (emailError) {
+          console.error('Error marking email notifications as read:', emailError);
+        }
+      }
+      
       setNotifications(prev => prev.map(n => ({...n, read: true})));
       setUnreadCount(0);
     } catch (error) {
@@ -247,7 +338,9 @@ export default function NotificationCenter() {
           </NotificationHeader>
           
           <NotificationList>
-            {notifications.length > 0 ? (
+            {loading ? (
+              <LoadingIndicator>Loading notifications...</LoadingIndicator>
+            ) : notifications.length > 0 ? (
               notifications.map(notification => (
                 <NotificationItem
                   key={notification.id}

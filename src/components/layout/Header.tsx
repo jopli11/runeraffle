@@ -300,6 +300,9 @@ export function Header() {
                 <NavLink to="/how-it-works" active={currentPath === '/how-it-works' ? 'true' : undefined}>
                   How It Works
                 </NavLink>
+                <NavLink to="/support" active={currentPath === '/support' ? 'true' : undefined}>
+                  Support
+                </NavLink>
                 {isAdmin && (
                   <NavLink to="/admin" active={currentPath === '/admin' ? 'true' : undefined}>
                     Admin
@@ -360,6 +363,9 @@ export function Header() {
               </MobileNavLink>
               <MobileNavLink to="/how-it-works" active={currentPath === '/how-it-works' ? 'true' : undefined}>
                 How It Works
+              </MobileNavLink>
+              <MobileNavLink to="/support" active={currentPath === '/support' ? 'true' : undefined}>
+                Support
               </MobileNavLink>
               {isAdmin && (
                 <MobileNavLink to="/admin" active={currentPath === '/admin' ? 'true' : undefined}>

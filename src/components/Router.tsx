@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import App from '../App';
 import { Header } from './layout/Header';
 import { Footer } from './layout/Footer';
@@ -14,6 +14,7 @@ import AdminDashboard from './admin/AdminDashboard';
 import VerificationPage from './verification/VerificationPage';
 import { AuthProvider } from '../context/AuthContext';
 import styled from '@emotion/styled';
+import { SupportPage } from './support/SupportPage';
 
 // Define main layout components
 const PageWrapper = styled.div`
@@ -47,7 +48,16 @@ export default function Router() {
               <Route path="/verification/:id" element={<VerificationPage />} />
               <Route path="/login" element={<AuthPage mode="login" />} />
               <Route path="/register" element={<AuthPage mode="register" />} />
+              
+              {/* Admin routes */}
               <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/admin/support" element={<Navigate to="/admin?tab=support" replace />} />
+              <Route path="/admin/competitions" element={<AdminDashboard />} />
+              <Route path="/admin/users" element={<AdminDashboard />} />
+              <Route path="/admin/winners" element={<AdminDashboard />} />
+              <Route path="/admin/analytics" element={<AdminDashboard />} />
+              
+              <Route path="/support" element={<SupportPage />} />
             </Routes>
           </Main>
           <Footer />

@@ -7,9 +7,10 @@ import {
   getTicketMessages, 
   addTicketMessage,
   SupportTicket, 
-  TicketMessage 
+  TicketMessage
 } from '../../services/firestore';
 import { useAuth } from '../../context/AuthContext';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const Container = styled.div`
   padding: 1.5rem;
@@ -353,6 +354,12 @@ const EmptyState = styled.div`
   color: hsl(var(--muted-foreground));
 `;
 
+const ActionsContainer = styled.div`
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+`;
+
 const formatDate = (timestamp: any): string => {
   if (!timestamp) return 'N/A';
   
@@ -364,40 +371,79 @@ const formatDate = (timestamp: any): string => {
   }
 };
 
-export default function AdminSupportTickets() {
+const AdminSupportTickets: React.FC = () => {
   const { currentUser } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState<'all' | 'prize' | 'support'>('all');
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
   const [messages, setMessages] = useState<TicketMessage[]>([]);
   const [reply, setReply] = useState('');
-  const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'all' | 'prize' | 'support'>('all');
+  const [sending, setSending] = useState(false);
+  
+  // Parse query parameters
+  const getQueryParam = (name: string): string | null => {
+    const searchParams = new URLSearchParams(location.search);
+    return searchParams.get(name);
+  };
   
   // Load open tickets on component mount
   useEffect(() => {
-    loadOpenTickets();
-  }, []);
-  
-  // Filter tickets based on active tab
-  const filteredTickets = tickets.filter(ticket => {
-    if (activeTab === 'all') return true;
-    if (activeTab === 'prize') return ticket.type === 'prize_collection';
-    if (activeTab === 'support') return ticket.type === 'support' || ticket.type === 'refund' || ticket.type === 'other';
-    return true;
-  });
-  
-  const loadOpenTickets = async () => {
-    try {
-      setLoading(true);
-      const openTickets = await getOpenSupportTickets();
-      setTickets(openTickets);
-    } catch (error) {
-      console.error('Error loading open tickets:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    const loadTickets = async () => {
+      if (!currentUser) return;
+      
+      try {
+        setLoading(true);
+        const openTickets = await getOpenSupportTickets();
+        setTickets(openTickets);
+        
+        // Check for ticketId in URL
+        const ticketId = getQueryParam('ticketId');
+        if (ticketId) {
+          console.log('Looking for ticket ID from URL:', ticketId);
+          
+          // Try to find ticket in the loaded tickets
+          let ticketToSelect = openTickets.find(t => t.id === ticketId);
+          
+          // If not found in open tickets, try to load it directly
+          if (!ticketToSelect) {
+            console.log('Ticket not found in open tickets, attempting to load directly');
+            try {
+              const ticket = await getSupportTicket(ticketId);
+              if (ticket) {
+                ticketToSelect = ticket;
+                // Add to tickets list if not already there
+                setTickets(prev => {
+                  if (!prev.some(t => t.id === ticket.id)) {
+                    return [...prev, ticket];
+                  }
+                  return prev;
+                });
+              }
+            } catch (error) {
+              console.error('Error loading ticket by ID:', error);
+            }
+          }
+          
+          // If we found the ticket, select it
+          if (ticketToSelect) {
+            console.log('Found ticket from URL param:', ticketToSelect.subject);
+            await selectTicket(ticketToSelect);
+          } else {
+            console.log('Ticket ID from URL not found');
+          }
+        }
+      } catch (error) {
+        console.error('Error loading tickets:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadTickets();
+  }, [currentUser, location.search]);
   
   const selectTicket = async (ticket: SupportTicket) => {
     setSelectedTicket(ticket);
@@ -433,6 +479,9 @@ export default function AdminSupportTickets() {
         // Load messages
         const ticketMessages = await getTicketMessages(ticket.id);
         setMessages(ticketMessages);
+        
+        // Update URL with ticketId parameter without full page reload
+        navigate(`/admin?tab=support&ticketId=${ticket.id}`, { replace: true });
       } catch (error) {
         console.error('Error updating ticket status:', error);
       }
@@ -447,7 +496,7 @@ export default function AdminSupportTickets() {
     try {
       setSending(true);
       
-      // Add the message
+      // Add the message - notification will be handled in the service layer
       await addTicketMessage({
         ticketId: selectedTicket.id,
         userId: currentUser.uid,
@@ -474,6 +523,7 @@ export default function AdminSupportTickets() {
     if (!confirm('Are you sure you want to mark this ticket as resolved?')) return;
     
     try {
+      // Update ticket status - notification will be handled in the service layer
       await updateSupportTicket(selectedTicket.id, {
         status: 'resolved'
       });
@@ -481,10 +531,21 @@ export default function AdminSupportTickets() {
       // Update ticket in the list and selected ticket
       setTickets(prevTickets => prevTickets.filter(t => t.id !== selectedTicket.id));
       setSelectedTicket(null);
+      
+      // Remove ticketId from URL
+      navigate('/admin?tab=support', { replace: true });
     } catch (error) {
       console.error('Error resolving ticket:', error);
     }
   };
+  
+  // Compute filtered tickets based on active tab
+  const filteredTickets = tickets.filter(ticket => {
+    if (activeTab === 'all') return true;
+    if (activeTab === 'prize') return ticket.type === 'prize_collection';
+    if (activeTab === 'support') return ticket.type === 'support';
+    return true;
+  });
   
   return (
     <Container>
@@ -579,6 +640,24 @@ export default function AdminSupportTickets() {
                       </TicketType>
                     </DetailMetaItem>
                   </DetailMeta>
+                  
+                  <ActionsContainer>
+                    <button 
+                      onClick={resolveTicket}
+                      disabled={selectedTicket.status === 'resolved'}
+                      style={{
+                        padding: '0.5rem 1rem',
+                        background: 'hsl(var(--primary))',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '0.25rem',
+                        cursor: 'pointer',
+                        opacity: selectedTicket.status === 'resolved' ? 0.5 : 1
+                      }}
+                    >
+                      Mark as Resolved
+                    </button>
+                  </ActionsContainer>
                 </DetailHeader>
                 
                 <DetailContent>
@@ -635,16 +714,6 @@ export default function AdminSupportTickets() {
                           >
                             {sending ? 'Sending...' : 'Send Reply'}
                           </Button>
-                          
-                          {selectedTicket.status !== 'resolved' && (
-                            <Button 
-                              variant="outline" 
-                              type="button"
-                              onClick={resolveTicket}
-                            >
-                              Mark as Resolved
-                            </Button>
-                          )}
                         </ButtonGroup>
                       </ActionButtons>
                     </ReplyForm>
@@ -657,4 +726,6 @@ export default function AdminSupportTickets() {
       )}
     </Container>
   );
-} 
+}
+
+export default AdminSupportTickets; 
