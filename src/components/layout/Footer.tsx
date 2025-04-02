@@ -242,14 +242,6 @@ export function Footer() {
         <CookieText>
           This website uses cookies to improve your experience. By using this site, you agree to our use of cookies.
         </CookieText>
-        <div>
-          <CookieButton aria-label="Accept cookies">
-            <CheckIcon />
-          </CookieButton>
-          <CookieButton aria-label="Cookie information">
-            <InfoIcon />
-          </CookieButton>
-        </div>
       </CookieNotice>
     </>
   );
