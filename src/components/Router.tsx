@@ -4,6 +4,7 @@ import App from '../App';
 import { Header } from './layout/Header';
 import { Footer } from './layout/Footer';
 import { ProfilePage } from './profile/ProfilePage';
+import { ReferralPage } from './profile/ReferralPage';
 import CompetitionsPage from './competitions/CompetitionsPage';
 import CompetitionPage from './competitions/CompetitionPage';
 import WinnersPage from './winners/WinnersPage';
@@ -38,13 +39,14 @@ export default function Router() {
             <Routes>
               <Route path="/" element={<App />} />
               <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/referrals" element={<ReferralPage />} />
               <Route path="/competitions" element={<CompetitionsPage />} />
               <Route path="/competition/:id" element={<CompetitionPage />} />
               <Route path="/winners" element={<WinnersPage />} />
-              <Route path="/verification/:id" element={<VerificationPage />} />
               <Route path="/how-it-works" element={<HowItWorksPage />} />
-              <Route path="/login" element={<AuthPage />} />
-              <Route path="/register" element={<AuthPage />} />
+              <Route path="/verification/:id" element={<VerificationPage />} />
+              <Route path="/login" element={<AuthPage mode="login" />} />
+              <Route path="/register" element={<AuthPage mode="register" />} />
               <Route path="/admin" element={<AdminDashboard />} />
             </Routes>
           </Main>

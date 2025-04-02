@@ -165,8 +165,14 @@ const GoogleIcon = () => (
   </svg>
 );
 
-export default function AuthPage() {
-  const [activeTab, setActiveTab] = useState<'login' | 'register' | 'reset'>('login');
+// Add this interface for the component's props
+interface AuthPageProps {
+  mode?: 'login' | 'register' | 'reset';
+}
+
+// Update the component definition to accept the props
+export default function AuthPage({ mode = 'login' }: AuthPageProps) {
+  const [activeTab, setActiveTab] = useState<'login' | 'register' | 'reset'>(mode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');

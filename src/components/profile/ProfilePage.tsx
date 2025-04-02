@@ -231,7 +231,7 @@ const ActionButton = styled.button`
 export function ProfilePage() {
   const { currentUser, isLoading, isAdmin } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'profile' | 'orders' | 'support'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'orders' | 'support' | 'referrals'>('profile');
   const [ticketHistory, setTicketHistory] = useState<any[]>([]);
   const [isLoadingTickets, setIsLoadingTickets] = useState(false);
   
@@ -320,6 +320,12 @@ export function ProfilePage() {
               onClick={() => setActiveTab('support')}
             >
               Support
+            </NavItem>
+            <NavItem 
+              active={activeTab === 'referrals'} 
+              onClick={() => setActiveTab('referrals')}
+            >
+              Referrals
             </NavItem>
           </SidebarNav>
         </Sidebar>
@@ -428,6 +434,30 @@ export function ProfilePage() {
                 <UserTickets />
               </SupportContainer>
             </SupportSection>
+          )}
+
+          {activeTab === 'referrals' && (
+            <Section>
+              <SectionTitle>My Referrals</SectionTitle>
+              <p style={{ marginBottom: '1.5rem' }}>
+                Earn rewards by referring friends to RuneRaffle. Track your referrals and rewards here.
+              </p>
+              <button 
+                onClick={() => navigate('/referrals')}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  borderRadius: '0.375rem',
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                  backgroundColor: 'hsl(var(--primary))',
+                  color: 'white',
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                Go to Referral Program
+              </button>
+            </Section>
           )}
         </MainContent>
       </ContentWrapper>

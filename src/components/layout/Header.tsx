@@ -157,14 +157,70 @@ const CreditValue = styled.span`
 
 const MobileNav = styled.div`
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  overflow-x: auto;
+  flex-direction: column;
+  width: 100%;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+  max-height: ${({ isOpen }: { isOpen: boolean }) => (isOpen ? '300px' : '0')};
+  background-color: hsl(222, 47%, 11%);
+`;
+
+const MobileNavLinkContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  width: 100%;
   padding: 0.5rem 0;
 `;
 
 const MobileNavLink = styled(NavLink)`
-  white-space: nowrap;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  
+  &:last-child {
+    border-bottom: none;
+  }
+`;
+
+const HamburgerButton = styled.button`
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 24px;
+  height: 20px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin-right: 1rem;
+
+  span {
+    width: 100%;
+    height: 2px;
+    background-color: white;
+    transition: all 0.3s ease;
+    transform-origin: left;
+  }
+  
+  &.open {
+    span:first-of-type {
+      transform: rotate(45deg);
+    }
+    
+    span:nth-of-type(2) {
+      opacity: 0;
+    }
+    
+    span:last-of-type {
+      transform: rotate(-45deg);
+    }
+  }
+`;
+
+const MobileButtonsContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem 1rem;
 `;
 
 const CreditSvg = () => (
@@ -175,13 +231,18 @@ const CreditSvg = () => (
 
 export function Header() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { currentUser, userCredits, isAdmin } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
+      const newIsMobile = window.innerWidth < 768;
+      setIsMobile(newIsMobile);
+      if (!newIsMobile) {
+        setMobileMenuOpen(false);
+      }
     };
 
     window.addEventListener('resize', handleResize);
@@ -195,9 +256,14 @@ export function Header() {
     try {
       await logOut();
       navigate('/');
+      setMobileMenuOpen(false);
     } catch (error) {
       console.error('Error logging out:', error);
     }
+  };
+
+  const toggleMobileMenu = () => {
+    setMobileMenuOpen(!mobileMenuOpen);
   };
 
   return (
@@ -205,6 +271,17 @@ export function Header() {
       <Container>
         <NavBar>
           <LogoContainer>
+            {isMobile && (
+              <HamburgerButton 
+                onClick={toggleMobileMenu}
+                className={mobileMenuOpen ? 'open' : ''}
+                aria-label="Toggle menu"
+              >
+                <span />
+                <span />
+                <span />
+              </HamburgerButton>
+            )}
             <Logo to="/">
               <span>Rune<LogoHighlight>Raffle</LogoHighlight></span>
             </Logo>
@@ -242,45 +319,82 @@ export function Header() {
                   <CreditValue>{userCredits}</CreditValue>
                 </CreditContainer>
                 <NotificationCenter />
-                <GhostButton onClick={() => navigate('/profile')}>
-                  Profile
-                </GhostButton>
-                <PrimaryButton onClick={handleLogout}>
-                  Logout
-                </PrimaryButton>
-                <UserNav />
+                {!isMobile && (
+                  <>
+                    <GhostButton onClick={() => navigate('/profile')}>
+                      Profile
+                    </GhostButton>
+                    <PrimaryButton onClick={handleLogout}>
+                      Logout
+                    </PrimaryButton>
+                  </>
+                )}
+                {isMobile && <UserNav />}
               </>
             ) : (
-              <>
-                <GhostButton onClick={() => navigate('/login')}>
-                  Login
-                </GhostButton>
-                <PrimaryButton onClick={() => navigate('/register')}>
-                  Register
-                </PrimaryButton>
-              </>
+              !isMobile && (
+                <>
+                  <GhostButton onClick={() => navigate('/login')}>
+                    Login
+                  </GhostButton>
+                  <PrimaryButton onClick={() => navigate('/register')}>
+                    Sign Up
+                  </PrimaryButton>
+                </>
+              )
             )}
           </ButtonsContainer>
         </NavBar>
         
         {isMobile && (
-          <MobileNav>
-            <MobileNavLink to="/" active={currentPath === '/' ? 'true' : undefined}>
-              Home
-            </MobileNavLink>
-            <MobileNavLink to="/competitions" active={(currentPath === '/competitions' || currentPath.startsWith('/competition/')) ? 'true' : undefined}>
-              Competitions
-            </MobileNavLink>
-            <MobileNavLink to="/winners" active={currentPath === '/winners' ? 'true' : undefined}>
-              Winners
-            </MobileNavLink>
-            <MobileNavLink to="/how-it-works" active={currentPath === '/how-it-works' ? 'true' : undefined}>
-              How It Works
-            </MobileNavLink>
-            {isAdmin && (
-              <MobileNavLink to="/admin" active={currentPath === '/admin' ? 'true' : undefined}>
-                Admin
+          <MobileNav isOpen={mobileMenuOpen}>
+            <MobileNavLinkContainer>
+              <MobileNavLink to="/" active={currentPath === '/' ? 'true' : undefined}>
+                Home
               </MobileNavLink>
+              <MobileNavLink to="/competitions" active={(currentPath === '/competitions' || currentPath.startsWith('/competition/')) ? 'true' : undefined}>
+                Competitions
+              </MobileNavLink>
+              <MobileNavLink to="/winners" active={currentPath === '/winners' ? 'true' : undefined}>
+                Winners
+              </MobileNavLink>
+              <MobileNavLink to="/how-it-works" active={currentPath === '/how-it-works' ? 'true' : undefined}>
+                How It Works
+              </MobileNavLink>
+              {isAdmin && (
+                <MobileNavLink to="/admin" active={currentPath === '/admin' ? 'true' : undefined}>
+                  Admin
+                </MobileNavLink>
+              )}
+            </MobileNavLinkContainer>
+            
+            {!currentUser ? (
+              <MobileButtonsContainer>
+                <GhostButton onClick={() => {
+                  navigate('/login');
+                  setMobileMenuOpen(false);
+                }}>
+                  Login
+                </GhostButton>
+                <PrimaryButton onClick={() => {
+                  navigate('/register');
+                  setMobileMenuOpen(false);
+                }}>
+                  Sign Up
+                </PrimaryButton>
+              </MobileButtonsContainer>
+            ) : (
+              <MobileButtonsContainer>
+                <GhostButton onClick={() => {
+                  navigate('/profile');
+                  setMobileMenuOpen(false);
+                }}>
+                  Profile
+                </GhostButton>
+                <PrimaryButton onClick={handleLogout}>
+                  Logout
+                </PrimaryButton>
+              </MobileButtonsContainer>
             )}
           </MobileNav>
         )}

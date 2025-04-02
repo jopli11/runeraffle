@@ -156,4 +156,35 @@ export const sendCompetitionEndingSoonEmail = async (
     hoursRemaining,
     competitionId
   });
+};
+
+// Add this function to send emails to users who have successfully earned referral rewards
+export const sendReferralRewardEmail = async (
+  email: string,
+  displayName: string,
+  creditAmount: number
+): Promise<void> => {
+  try {
+    console.log(`[EMAIL] Sending referral reward email to ${email}...`);
+    
+    const payload = {
+      to: email,
+      template: {
+        name: 'referral-reward',
+        data: {
+          displayName,
+          creditAmount,
+          date: new Date().toLocaleDateString(),
+          loginUrl: `${window.location.origin}/login`
+        }
+      }
+    };
+    
+    // In a real implementation, this would call an API endpoint
+    console.log(`[EMAIL] Referral reward email payload:`, payload);
+    console.log(`[EMAIL] Referral reward email sent to ${email} successfully!`);
+    
+  } catch (error) {
+    console.error('Error sending referral reward email:', error);
+  }
 }; 

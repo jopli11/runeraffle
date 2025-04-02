@@ -8,6 +8,7 @@ import AdminCompetitionForm from './AdminCompetitionForm';
 import DatabaseSeeder from './DatabaseSeeder';
 import { CompetitionProcessor } from './CompetitionProcessor';
 import AdminSupportTickets from './AdminSupportTickets';
+import AdminAnalytics from './AdminAnalytics';
 import { useNavigate } from 'react-router-dom';
 
 // Styled components
@@ -155,7 +156,7 @@ const ErrorContainer = styled.div`
 
 export default function AdminDashboard() {
   const { currentUser, isLoading, isAdmin } = useAuth();
-  const [activeTab, setActiveTab] = useState<'competitions' | 'users' | 'winners' | 'create' | 'seeder' | 'processor' | 'support'>('competitions');
+  const [activeTab, setActiveTab] = useState<'competitions' | 'users' | 'winners' | 'create' | 'seeder' | 'processor' | 'support' | 'analytics'>('competitions');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -216,6 +217,12 @@ export default function AdminDashboard() {
           Process Competitions
         </SecondaryButton>
         <SecondaryButton
+          onClick={() => setActiveTab('analytics')}
+          disabled={activeTab === 'analytics'}
+        >
+          Analytics
+        </SecondaryButton>
+        <SecondaryButton
           onClick={() => setActiveTab('support')}
           disabled={activeTab === 'support'}
         >
@@ -249,6 +256,12 @@ export default function AdminDashboard() {
           Past Winners
         </Tab>
         <Tab 
+          active={activeTab === 'analytics'} 
+          onClick={() => setActiveTab('analytics')}
+        >
+          Analytics
+        </Tab>
+        <Tab 
           active={activeTab === 'processor'} 
           onClick={() => setActiveTab('processor')}
         >
@@ -275,6 +288,7 @@ export default function AdminDashboard() {
       {activeTab === 'processor' && <CompetitionProcessor />}
       {activeTab === 'support' && <AdminSupportTickets />}
       {activeTab === 'seeder' && <DatabaseSeeder />}
+      {activeTab === 'analytics' && <AdminAnalytics />}
     </Container>
   );
 } 

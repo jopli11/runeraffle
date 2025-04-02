@@ -4,6 +4,7 @@ import { getCompetition, buyTicket, Competition as FirestoreCompetition } from '
 import { useAuth } from '../../context/AuthContext';
 import { TicketPurchase } from './TicketPurchase';
 import { useParams, useNavigate } from 'react-router-dom';
+import ShareButtons from '../social/ShareButtons';
 
 // Styled components
 const Container = styled.div`
@@ -426,6 +427,18 @@ const CompetitionImage = styled.div<{ imageUrl?: string }>`
     border-radius: 0.75rem;
     opacity: ${props => props.imageUrl ? 1 : 0};
   }
+`;
+
+const SectionDivider = styled.div`
+  height: 1px;
+  background-color: rgba(255, 255, 255, 0.1);
+  margin: 2rem 0;
+`;
+
+const SectionTitle = styled.h3`
+  font-size: 1.25rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
 `;
 
 // Define SVG icons as components
@@ -1139,6 +1152,15 @@ export default function CompetitionPage() {
           onPurchaseComplete={handlePurchaseComplete} 
         />
       )}
+      
+      {/* After prize section */}
+      <SectionDivider />
+      <SectionTitle>Share this competition</SectionTitle>
+      <ShareButtons 
+        title={`Check out this RuneRaffle competition: ${competition.title}`}
+        url={window.location.href}
+        description={`${competition.description} Prize value: ${competition.prizeValue} credits. Enter now!`}
+      />
     </Container>
   );
 } 

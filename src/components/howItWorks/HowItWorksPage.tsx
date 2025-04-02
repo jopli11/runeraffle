@@ -8,6 +8,10 @@ const Container = styled.div`
   max-width: 1200px;
   margin: 0 auto;
   padding: 2rem 1rem;
+  
+  @media (max-width: 768px) {
+    padding: 1rem;
+  }
 `;
 
 const HeroSection = styled.div`
@@ -28,6 +32,11 @@ const HeroSection = styled.div`
     bottom: 0;
     background: url('/images/pattern.svg') repeat;
     opacity: 0.1;
+  }
+  
+  @media (max-width: 768px) {
+    padding: 2.5rem 1rem;
+    margin-bottom: 2rem;
   }
 `;
 
@@ -63,6 +72,12 @@ const StepsGrid = styled.div`
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 2rem;
   margin-bottom: 4rem;
+  
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    margin-bottom: 2.5rem;
+  }
 `;
 
 const StepCard = styled(motion.div)`
@@ -126,6 +141,20 @@ const FeatureSection = styled.div`
   padding: 3rem;
   margin-bottom: 4rem;
   border: 1px solid rgba(255, 255, 255, 0.1);
+  
+  @media (max-width: 768px) {
+    padding: 1.5rem;
+    margin-bottom: 2.5rem;
+  }
+  
+  h2 {
+    font-size: 1.75rem;
+    margin-bottom: 1rem;
+    
+    @media (max-width: 768px) {
+      font-size: 1.5rem;
+    }
+  }
 `;
 
 const FeatureGrid = styled.div`
@@ -177,6 +206,11 @@ const FAQGrid = styled.div`
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 2rem;
   margin-top: 2rem;
+  
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
 `;
 
 const FAQItem = styled(motion.div)`
@@ -289,6 +323,11 @@ const CodeBlock = styled.div`
   overflow-x: auto;
   margin: 1rem 0;
   border: 1px solid rgba(255, 255, 255, 0.1);
+  
+  @media (max-width: 768px) {
+    font-size: 0.75rem;
+    padding: 0.75rem;
+  }
 `;
 
 const WarningBlock = styled.div`
@@ -327,6 +366,12 @@ const StepContainer = styled.div`
   
   &:hover {
     border-color: hsl(var(--primary));
+  }
+  
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.25rem;
   }
 `;
 
@@ -531,7 +576,7 @@ export function HowItWorksPage() {
               <WarningIcon />
               Important Note
             </WarningHeading>
-            <p>
+            <p style={{ fontSize: window.innerWidth < 768 ? '0.9rem' : '1rem' }}>
               Our provably fair system ensures that neither we nor any player can manipulate the outcome. The combination of our pre-committed seed and external entropy from the Bitcoin blockchain guarantees a completely fair and transparent draw.
             </p>
           </WarningBlock>
