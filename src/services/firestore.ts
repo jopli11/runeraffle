@@ -91,18 +91,12 @@ export const getCompetitions = async (): Promise<Competition[]> => {
 };
 
 export const getActiveCompetitions = async (): Promise<Competition[]> => {
-  const snapshot = await competitionsRef
-    .where('status', 'in', ['active', 'ending'])
-    .orderBy('createdAt', 'desc')
-    .get();
+  const snapshot = await competitionsRef.where('status', 'in', ['active', 'ending']).orderBy('createdAt', 'desc').get();
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as Competition }));
 };
 
 export const getCompletedCompetitions = async (): Promise<Competition[]> => {
-  const snapshot = await competitionsRef
-    .where('status', 'in', ['complete'])
-    .orderBy('completedAt', 'desc')
-    .get();
+  const snapshot = await competitionsRef.where('status', 'in', ['complete']).orderBy('completedAt', 'desc').get();
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as Competition }));
 };
 
@@ -194,7 +188,7 @@ export const buyTicket = async (ticket: Omit<Ticket, 'id' | 'purchasedAt' | 'isW
     );
     
     // Get user info for email
-    const userSnapshot = await db.collection('users').doc(ticket.userId).get();
+    const userSnapshot = await usersRef.doc(ticket.userId).get();
     if (userSnapshot.exists) {
       const userData = userSnapshot.data();
       if (userData && userData.email) {
@@ -216,18 +210,12 @@ export const buyTicket = async (ticket: Omit<Ticket, 'id' | 'purchasedAt' | 'isW
 };
 
 export const getUserTickets = async (userId: string): Promise<Ticket[]> => {
-  const snapshot = await ticketsRef
-    .where('userId', '==', userId)
-    .orderBy('purchasedAt', 'desc')
-    .get();
+  const snapshot = await ticketsRef.where('userId', '==', userId).orderBy('purchasedAt', 'desc').get();
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as Ticket }));
 };
 
 export const getCompetitionTickets = async (competitionId: string): Promise<Ticket[]> => {
-  const snapshot = await ticketsRef
-    .where('competitionId', '==', competitionId)
-    .orderBy('purchasedAt', 'asc')
-    .get();
+  const snapshot = await ticketsRef.where('competitionId', '==', competitionId).orderBy('purchasedAt', 'asc').get();
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as Ticket }));
 };
 
@@ -276,10 +264,7 @@ export const getAuthUserIdByEmail = async (email: string): Promise<string | null
     // First, check the auth collection if it exists (preferred method)
     try {
       console.log(`Checking auth collection first (best method)`);
-      const authSnapshot = await db.collection('auth')
-        .where('email', '==', email)
-        .limit(1)
-        .get();
+      const authSnapshot = await firebase.firestore().collection('auth').where('email', '==', email).limit(1).get();
         
       if (!authSnapshot.empty) {
         const authId = authSnapshot.docs[0].id;
@@ -293,10 +278,7 @@ export const getAuthUserIdByEmail = async (email: string): Promise<string | null
     // Then check using Firebase API (if available)
     try {
       console.log(`Looking for auth UID in users collection by email field`);
-      const userSnapshot = await db.collection('users')
-        .where('email', '==', email)
-        .limit(1)
-        .get();
+      const userSnapshot = await firebase.firestore().collection('users').where('email', '==', email).limit(1).get();
       
       if (!userSnapshot.empty) {
         const userData = userSnapshot.docs[0].data();
@@ -312,7 +294,7 @@ export const getAuthUserIdByEmail = async (email: string): Promise<string | null
     // Check if email is used as the document ID in users collection
     try {
       console.log(`Checking if email is the document ID`);
-      const userDoc = await db.collection('users').doc(email).get();
+      const userDoc = await usersRef.doc(email).get();
       if (userDoc.exists) {
         const userData = userDoc.data();
         if (userData && userData.uid) {
@@ -328,10 +310,7 @@ export const getAuthUserIdByEmail = async (email: string): Promise<string | null
     console.log(`Looking for the user in the firebase authentication context`);
     // For debugging, let's query the location where we're storing current user data
     try {
-      const authDataQuery = await db.collection('currentUsers')
-        .where('email', '==', email)
-        .limit(1)
-        .get();
+      const authDataQuery = await firebase.firestore().collection('currentUsers').where('email', '==', email).limit(1).get();
         
       if (!authDataQuery.empty) {
         const authData = authDataQuery.docs[0].data();
@@ -347,10 +326,7 @@ export const getAuthUserIdByEmail = async (email: string): Promise<string | null
     // If all these methods fail, get the user's document ID
     try {
       console.log(`Attempting to get the user document with email ${email}`);
-      const userQuery = await db.collection('users')
-        .where('email', '==', email)
-        .limit(1)
-        .get();
+      const userQuery = await usersRef.where('email', '==', email).limit(1).get();
       
       if (!userQuery.empty) {
         const userDocId = userQuery.docs[0].id;
@@ -365,10 +341,7 @@ export const getAuthUserIdByEmail = async (email: string): Promise<string | null
     console.log(`No auth UID found directly. Checking notification history for this user.`);
     try {
       // See if we can find existing notifications for this user's email
-      const userNotificationsQuery = await db.collection('notifications')
-        .where('email', '==', email)
-        .limit(1)
-        .get();
+      const userNotificationsQuery = await firebase.firestore().collection('notifications').where('email', '==', email).limit(1).get();
         
       if (!userNotificationsQuery.empty) {
         const userId = userNotificationsQuery.docs[0].data().userId;
@@ -523,20 +496,13 @@ export const updateSupportTicket = async (ticketId: string, data: Partial<Suppor
 };
 
 export const getUserSupportTickets = async (userId: string): Promise<SupportTicket[]> => {
-  const snapshot = await supportTicketsRef
-    .where('userId', '==', userId)
-    .orderBy('createdAt', 'desc')
-    .get();
+  const snapshot = await supportTicketsRef.where('userId', '==', userId).orderBy('createdAt', 'desc').get();
   
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as SupportTicket }));
 };
 
 export const getOpenSupportTickets = async (): Promise<SupportTicket[]> => {
-  const snapshot = await supportTicketsRef
-    .where('status', 'in', ['open', 'in_progress'])
-    .orderBy('priority', 'desc')
-    .orderBy('createdAt', 'asc')
-    .get();
+  const snapshot = await supportTicketsRef.where('status', 'in', ['open', 'in_progress']).orderBy('priority', 'desc').orderBy('createdAt', 'asc').get();
   
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as SupportTicket }));
 };
@@ -603,7 +569,7 @@ export const addTicketMessage = async (message: Omit<TicketMessage, 'id' | 'crea
     console.log(`Message added successfully with ID: ${docRef.id}`);
     
     // Update the ticket's updatedAt timestamp
-    await supportTicketsRef.doc(message.ticketId).update({
+    await ticketMessagesRef.doc(message.ticketId).update({
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     
@@ -677,10 +643,7 @@ export const addTicketMessage = async (message: Omit<TicketMessage, 'id' | 'crea
 };
 
 export const getTicketMessages = async (ticketId: string): Promise<TicketMessage[]> => {
-  const snapshot = await ticketMessagesRef
-    .where('ticketId', '==', ticketId)
-    .orderBy('createdAt', 'asc')
-    .get();
+  const snapshot = await ticketMessagesRef.where('ticketId', '==', ticketId).orderBy('createdAt', 'asc').get();
   
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as TicketMessage }));
 };

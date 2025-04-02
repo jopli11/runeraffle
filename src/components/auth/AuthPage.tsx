@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from '@emotion/styled';
 import { registerWithEmail, loginWithEmail, signInWithGoogle, sendPasswordResetEmail } from '../../config/firebase';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { processReferral } from '../../services/referralService';
 
 // Styled components
 const Container = styled.div`
@@ -176,10 +177,22 @@ export default function AuthPage({ mode = 'login' }: AuthPageProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [referralCode, setReferralCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Check for referral code in URL when component mounts
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const refCode = searchParams.get('ref');
+    if (refCode) {
+      setReferralCode(refCode);
+      setActiveTab('register'); // Switch to register tab if a referral code is present
+    }
+  }, [location]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -192,8 +205,25 @@ export default function AuthPage({ mode = 'login' }: AuthPageProps) {
         await loginWithEmail(email, password);
         navigate('/');
       } else if (activeTab === 'register') {
-        await registerWithEmail(email, password, displayName);
-        setSuccessMessage('Account created! Please check your email for verification.');
+        const user = await registerWithEmail(email, password, displayName);
+        
+        // If a referral code is provided, process it
+        if (referralCode && user) {
+          try {
+            const processed = await processReferral(referralCode, user.uid, email);
+            if (processed) {
+              setSuccessMessage('Account created with referral bonus! Please check your email for verification.');
+            } else {
+              setSuccessMessage('Account created! Referral code could not be processed. Please check your email for verification.');
+            }
+          } catch (refErr) {
+            console.error('Error processing referral:', refErr);
+            setSuccessMessage('Account created! Referral code could not be processed. Please check your email for verification.');
+          }
+        } else {
+          setSuccessMessage('Account created! Please check your email for verification.');
+        }
+        
         setTimeout(() => navigate('/'), 2000);
       } else if (activeTab === 'reset') {
         await sendPasswordResetEmail(email);
@@ -302,18 +332,32 @@ export default function AuthPage({ mode = 'login' }: AuthPageProps) {
 
           <Form onSubmit={handleSubmit}>
             {activeTab === 'register' && (
-              <FormGroup>
-                <Label htmlFor="displayName">Display Name</Label>
-                <Input
-                  id="displayName"
-                  type="text"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="Your display name"
-                  required={activeTab === 'register'}
-                  autoComplete="name"
-                />
-              </FormGroup>
+              <>
+                <FormGroup>
+                  <Label htmlFor="displayName">Display Name</Label>
+                  <Input
+                    id="displayName"
+                    type="text"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    placeholder="Your display name"
+                    required
+                    autoComplete="name"
+                  />
+                </FormGroup>
+                
+                <FormGroup>
+                  <Label htmlFor="referralCode">Referral Code (Optional)</Label>
+                  <Input
+                    id="referralCode"
+                    type="text"
+                    value={referralCode}
+                    onChange={(e) => setReferralCode(e.target.value)}
+                    placeholder="Enter referral code"
+                    autoComplete="off"
+                  />
+                </FormGroup>
+              </>
             )}
             
             <FormGroup>
