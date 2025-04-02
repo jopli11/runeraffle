@@ -5,6 +5,24 @@ import { useAuth } from './context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Loader } from './components/ui/Loader';
 import { StyledContainer } from './components/ui/StyledContainer';
+import { keyframes } from '@emotion/react';
+
+// Add animation keyframes
+const float = keyframes`
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+`;
+
+const shimmer = keyframes`
+  0% { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+`;
+
+const pulse = keyframes`
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+`;
 
 // Styled components
 const Container = styled.div`
@@ -18,13 +36,30 @@ const Section = styled.section`
 `;
 
 const HeroSection = styled.div`
-  padding: 4rem 2rem;
-  margin-bottom: 3rem;
+  padding: 6rem 2rem;
+  margin-bottom: 4rem;
   text-align: center;
   position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, hsl(var(--background)), hsl(222, 47%, 15%));
+  border-radius: 1rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: radial-gradient(circle at 20px 20px, rgba(255, 255, 255, 0.05) 2px, transparent 0);
+    background-size: 30px 30px;
+    opacity: 0.4;
+    z-index: 0;
+  }
   
   @media (max-width: 768px) {
-    padding: 2.5rem 1rem;
+    padding: 4rem 1rem;
   }
 `;
 
@@ -37,12 +72,15 @@ const HeroContainer = styled.div`
 `;
 
 const LogoHeading = styled.h1`
-  font-size: 3.5rem;
-  font-weight: bold;
+  font-size: 4.5rem;
+  font-weight: 800;
   margin-bottom: 1.5rem;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  animation: ${float} 6s ease-in-out infinite;
   
   @media (max-width: 768px) {
-    font-size: 2.5rem;
+    font-size: 3rem;
   }
 `;
 
@@ -55,13 +93,20 @@ const SecondWord = styled.span`
 `;
 
 const HeroDescription = styled.p`
-  font-size: 1.25rem;
-  margin-bottom: 2rem;
-  color: hsl(var(--foreground));
+  font-size: 1.5rem;
+  margin-bottom: 2.5rem;
+  color: hsl(var(--foreground) / 0.9);
   line-height: 1.6;
   max-width: 800px;
   margin-left: auto;
   margin-right: auto;
+  animation: fadeIn 1s ease-out;
+  animation-delay: 0.3s;
+  animation-fill-mode: both;
+  
+  @media (max-width: 768px) {
+    font-size: 1.2rem;
+  }
 `;
 
 const ButtonGroup = styled.div`
@@ -93,22 +138,60 @@ const Button = styled.button`
 const PrimaryButton = styled(Button)`
   background-color: hsl(var(--primary));
   color: white;
+  padding: 0.875rem 2rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+  position: relative;
+  overflow: hidden;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    animation: ${shimmer} 3s infinite;
+    background-size: 200% 100%;
+  }
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+  }
 `;
 
 const SecondaryButton = styled(Button)`
   background-color: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.2);
   color: white;
+  padding: 0.875rem 2rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+    transform: translateY(-4px);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  }
 `;
 
 const FeaturedCompetition = styled.div`
-  border-radius: 0.75rem;
-  padding: 2rem;
+  border-radius: 1rem;
+  padding: 2.5rem;
   position: relative;
   overflow: hidden;
   background-color: hsl(var(--card));
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease;
+  
+  &:hover {
+    transform: translateY(-5px);
+  }
 `;
 
 const CompetitionContent = styled.div`
@@ -432,44 +515,62 @@ const StepsGrid = styled.div`
   gap: 2rem;
 `;
 
-const StepContent = styled.div`
+// Define a className for the step
+const StepWrapper = styled.div<{ itemKey?: number }>`
   text-align: center;
   background-color: hsl(var(--card));
-  border-radius: 0.75rem;
-  padding: 2rem;
-  transition: transform 0.2s ease;
+  border-radius: 1rem;
+  padding: 2.5rem;
+  transition: all 0.3s ease;
+  animation: ${pulse} 10s ease-in-out infinite;
+  animation-delay: ${props => (props.itemKey || 0) * 2}s;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  border: 1px solid transparent;
+  background-clip: padding-box, border-box;
+  background-origin: padding-box, border-box;
+  background-image: 
+    linear-gradient(to bottom, hsl(var(--card)), hsl(var(--card))), 
+    linear-gradient(to bottom, hsla(var(--primary), 0.2), transparent);
   
   &:hover {
-    transform: translateY(-5px);
+    transform: translateY(-10px) scale(1.02);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+  }
+  
+  &:hover .step-icon {
+    transform: scale(1.1);
+    background-color: rgba(0, 174, 239, 0.3);
+  }
+  
+  &:hover .step-icon::after {
+    opacity: 1;
   }
 `;
 
-const StepIcon = styled.div<{ color: string }>`
-  width: 4rem;
-  height: 4rem;
+const StepIconWrapper = styled.div<{ color: string }>`
+  width: 5rem;
+  height: 5rem;
   background-color: ${props => `rgba(${props.color}, 0.2)`};
   border-radius: 9999px;
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0 auto 1.5rem auto;
-`;
-
-const StepNumber = styled.span<{ color: string }>`
-  font-size: 1.25rem;
-  font-weight: bold;
-  color: ${props => `rgb(${props.color})`};
-`;
-
-const StepTitle = styled.h3`
-  font-size: 1.25rem;
-  font-weight: bold;
-  margin-bottom: 0.75rem;
-`;
-
-const StepDescription = styled.p`
-  opacity: 0.9;
-  line-height: 1.6;
+  transition: all 0.3s ease;
+  position: relative;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: -5px;
+    left: -5px;
+    right: -5px;
+    bottom: -5px;
+    border-radius: 9999px;
+    border: 2px solid ${props => `rgba(${props.color}, 0.3)`};
+    opacity: 0;
+    transition: all 0.3s ease;
+  }
 `;
 
 // Define SVG icons as components
@@ -517,6 +618,24 @@ const formatTimeLeft = (endsAt: any) => {
     return 'N/A';
   }
 };
+
+// Add back the styled components that were accidentally removed but are still being used
+const StepNumber = styled.span<{ color: string }>`
+  font-size: 1.25rem;
+  font-weight: bold;
+  color: ${props => `rgb(${props.color})`};
+`;
+
+const StepTitle = styled.h3`
+  font-size: 1.25rem;
+  font-weight: bold;
+  margin-bottom: 0.75rem;
+`;
+
+const StepDescription = styled.p`
+  opacity: 0.9;
+  line-height: 1.6;
+`;
 
 export default function App() {
   const [ticketCount, setTicketCount] = useState(1);
@@ -879,33 +998,33 @@ export default function App() {
       <Section>
         <CenteredHeading>How Our Raffles Work</CenteredHeading>
         <StepsGrid>
-          <StepContent>
-            <StepIcon color="0, 174, 239">
-              <StepNumber color="0, 174, 239">1</StepNumber>
-            </StepIcon>
-            <StepTitle>Buy Tickets</StepTitle>
-            <StepDescription>
-              Purchase tickets using credits. The more tickets you buy, the higher your chances of winning.
-            </StepDescription>
-          </StepContent>
-          <StepContent>
-            <StepIcon color="0, 174, 239">
-              <StepNumber color="0, 174, 239">2</StepNumber>
-            </StepIcon>
-            <StepTitle>Wait for the Draw</StepTitle>
-            <StepDescription>
-              Once all tickets are sold, our provably fair system randomly selects a winning ticket.
-            </StepDescription>
-          </StepContent>
-          <StepContent>
-            <StepIcon color="0, 174, 239">
-              <StepNumber color="0, 174, 239">3</StepNumber>
-            </StepIcon>
-            <StepTitle>Collect Your Prize</StepTitle>
-            <StepDescription>
-              If you win, we'll contact you to arrange delivery of your in-game prize within 24 hours.
-            </StepDescription>
-          </StepContent>
+          {[
+            {
+              step: 1,
+              title: "Buy Tickets",
+              description: "Purchase tickets using credits. The more tickets you buy, the higher your chances of winning."
+            },
+            {
+              step: 2,
+              title: "Wait for the Draw",
+              description: "Once all tickets are sold, our provably fair system randomly selects a winning ticket."
+            },
+            {
+              step: 3,
+              title: "Collect Your Prize",
+              description: "If you win, we'll contact you to arrange delivery of your in-game prize within 24 hours."
+            }
+          ].map((item, index) => (
+            <StepWrapper key={index} itemKey={index}>
+              <StepIconWrapper className="step-icon" color="0, 174, 239">
+                <StepNumber color="0, 174, 239">{item.step}</StepNumber>
+              </StepIconWrapper>
+              <StepTitle>{item.title}</StepTitle>
+              <StepDescription>
+                {item.description}
+              </StepDescription>
+            </StepWrapper>
+          ))}
         </StepsGrid>
         <ButtonGroup style={{ justifyContent: 'center', marginTop: '2rem' }}>
           <SecondaryButton onClick={handleNavigateToHowItWorks}>
