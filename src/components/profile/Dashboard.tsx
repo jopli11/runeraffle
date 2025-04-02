@@ -236,7 +236,9 @@ export function Dashboard() {
     // This would be handled by a cloud function in a real app
     // to prevent client-side manipulation
     import('../../services/firestore').then(({ updateUser }) => {
-      updateUser(currentUser.email, {
+      // Make sure email is not null before passing to updateUser
+      const email = currentUser.email || '';
+      updateUser(email, {
         credits: newCredits
       }).then(() => {
         setUserCredits(newCredits);

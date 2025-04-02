@@ -7,7 +7,7 @@ import { ProfilePage } from './profile/ProfilePage';
 import CompetitionsPage from './competitions/CompetitionsPage';
 import CompetitionPage from './competitions/CompetitionPage';
 import WinnersPage from './winners/WinnersPage';
-import HowItWorksPage from './howItWorks/HowItWorksPage';
+import { HowItWorksPage } from './howItWorks/HowItWorksPage';
 import AuthPage from './auth/AuthPage';
 import AdminDashboard from './admin/AdminDashboard';
 import { AuthProvider } from '../context/AuthContext';

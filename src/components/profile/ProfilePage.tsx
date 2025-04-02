@@ -92,17 +92,34 @@ const SupportSection = styled.div`
   margin-bottom: 2rem;
 `;
 
-const TwoColumn = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
-  
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-  }
+const SupportContainer = styled.div`
+  padding: 0;
 `;
 
-const Column = styled.div``;
+const SupportIntro = styled.div`
+  margin-bottom: 1.5rem;
+  background: linear-gradient(to right, hsl(var(--primary)), hsl(265, 83%, 45%));
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  color: white;
+`;
+
+const SupportCard = styled.div`
+  margin-bottom: 2rem;
+`;
+
+const SupportCardTitle = styled.h3`
+  font-size: 1.25rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
+`;
+
+const SupportDivider = styled.div`
+  height: 1px;
+  background-color: hsl(var(--border));
+  margin-bottom: 2rem;
+  margin-top: 2rem;
+`;
 
 const AdminSection = styled.div`
   margin-top: 2rem;
@@ -270,14 +287,20 @@ export function ProfilePage() {
             <SupportSection>
               <SectionTitle>Support</SectionTitle>
               
-              <TwoColumn>
-                <Column>
+              <SupportContainer>
+                <SupportIntro>
+                  If you need assistance with your purchases, prizes, or have questions about our service, please submit a ticket below. Our team will respond as soon as possible.
+                </SupportIntro>
+                
+                <SupportCard>
                   <NewTicketForm />
-                </Column>
-                <Column>
-                  <UserTickets />
-                </Column>
-              </TwoColumn>
+                </SupportCard>
+                
+                <SupportDivider />
+                
+                <SupportCardTitle>Your Tickets</SupportCardTitle>
+                <UserTickets />
+              </SupportContainer>
             </SupportSection>
           )}
         </MainContent>

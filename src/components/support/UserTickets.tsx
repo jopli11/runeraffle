@@ -4,16 +4,14 @@ import { useAuth } from '../../context/AuthContext';
 import { getUserSupportTickets, SupportTicket, getTicketMessages, TicketMessage, addTicketMessage } from '../../services/firestore';
 
 const Container = styled.div`
-  padding: 1.5rem;
-  background: hsl(var(--card));
+  width: 100%;
+  background: transparent;
   border-radius: 0.75rem;
-  border: 1px solid hsl(var(--border));
+  overflow: hidden;
 `;
 
 const Title = styled.h2`
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin-bottom: 1.5rem;
+  display: none; /* Hide this as we already have a title in the support section */
 `;
 
 const EmptyState = styled.div`
@@ -26,18 +24,40 @@ const TicketsList = styled.div`
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  max-height: 500px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+  
+  /* Scrollbar styling */
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: hsla(var(--muted), 0.1);
+    border-radius: 3px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: hsla(var(--muted), 0.5);
+    border-radius: 3px;
+  }
 `;
 
 const TicketItem = styled.div<{ isSelected?: boolean }>`
-  padding: 1rem;
-  border-radius: 0.5rem;
-  background: ${props => props.isSelected ? 'hsl(var(--accent))' : 'hsl(var(--background))'};
-  border: 1px solid hsl(var(--border));
+  padding: 1.25rem;
+  border-radius: 0.75rem;
+  background: ${props => props.isSelected ? 'hsla(var(--primary), 0.08)' : 'hsl(var(--card))'};
+  border: 1px solid ${props => props.isSelected ? 'hsla(var(--primary), 0.3)' : 'hsl(var(--border))'};
   cursor: pointer;
   transition: all 0.2s;
+  box-shadow: ${props => props.isSelected ? '0 4px 12px rgba(0, 0, 0, 0.1)' : '0 2px 8px rgba(0, 0, 0, 0.05)'};
   
   &:hover {
-    background: hsl(var(--accent));
+    background: hsla(var(--primary), 0.05);
+    border-color: hsla(var(--primary), 0.2);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
   }
 `;
 
@@ -121,9 +141,12 @@ const TicketMetadata = styled.div`
 `;
 
 const TicketDetails = styled.div`
-  margin-top: 2rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid hsl(var(--border));
+  margin-top: 0;
+  padding: 1.5rem;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 `;
 
 const TicketInfo = styled.div`
@@ -263,9 +286,18 @@ const Button = styled.button`
 `;
 
 const NoTicketSelected = styled.div`
-  text-align: center;
-  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
   color: hsl(var(--muted-foreground));
+  text-align: center;
+  
+  svg {
+    margin-bottom: 1rem;
+    color: hsla(var(--muted), 0.5);
+  }
 `;
 
 const LoadingSpinner = styled.div`
@@ -456,13 +488,19 @@ export function UserTickets() {
                   <TicketHeader>
                     <TicketTitle>{ticket.subject}</TicketTitle>
                     <TicketStatus status={ticket.status}>
-                      {ticket.status.replace('_', ' ')}
+                      {ticket.status === 'open' ? 'Open' : 
+                       ticket.status === 'in_progress' ? 'In Progress' : 
+                       ticket.status === 'resolved' ? 'Resolved' : 
+                       'Closed'}
                     </TicketStatus>
                   </TicketHeader>
                   
                   <TicketMetadata>
                     <TicketType type={ticket.type}>
-                      {ticket.type.replace('_', ' ')}
+                      {ticket.type === 'prize_collection' ? 'Prize Collection' : 
+                       ticket.type === 'support' ? 'Support' : 
+                       ticket.type === 'refund' ? 'Refund' : 
+                       'Other'}
                     </TicketType>
                   </TicketMetadata>
                   
@@ -496,7 +534,10 @@ export function UserTickets() {
                     <InfoLabel>Status:</InfoLabel>
                     <InfoValue>
                       <TicketStatus status={selectedTicket.status}>
-                        {selectedTicket.status.replace('_', ' ')}
+                        {selectedTicket.status === 'open' ? 'Open' : 
+                         selectedTicket.status === 'in_progress' ? 'In Progress' : 
+                         selectedTicket.status === 'resolved' ? 'Resolved' : 
+                         'Closed'}
                       </TicketStatus>
                     </InfoValue>
                   </InfoRow>
@@ -505,7 +546,10 @@ export function UserTickets() {
                     <InfoLabel>Type:</InfoLabel>
                     <InfoValue>
                       <TicketType type={selectedTicket.type}>
-                        {selectedTicket.type.replace('_', ' ')}
+                        {selectedTicket.type === 'prize_collection' ? 'Prize Collection' : 
+                         selectedTicket.type === 'support' ? 'Support' : 
+                         selectedTicket.type === 'refund' ? 'Refund' : 
+                         'Other'}
                       </TicketType>
                     </InfoValue>
                   </InfoRow>
@@ -570,6 +614,9 @@ export function UserTickets() {
               </TicketDetails>
             ) : (
               <NoTicketSelected>
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M9 12H15M9 16H15M17 21H7C5.89543 21 5 20.1046 5 19V5C5 3.89543 5.89543 3 7 3H12.5858C12.851 3 13.1054 3.10536 13.2929 3.29289L18.7071 8.70711C18.8946 8.89464 19 9.149 19 9.41421V19C19 20.1046 18.1046 21 17 21Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
                 Select a ticket to view details
               </NoTicketSelected>
             )}
