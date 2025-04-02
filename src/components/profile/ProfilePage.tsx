@@ -6,6 +6,20 @@ import { NewTicketForm } from '../support/NewTicketForm';
 import { UserTickets } from '../support/UserTickets';
 import { Dashboard } from './Dashboard';
 import { useNavigate } from 'react-router-dom';
+import { Loader } from '../ui/Loader';
+import { StyledContainer } from '../ui/StyledContainer';
+import { keyframes } from '@emotion/react';
+
+// Animation keyframes
+const fadeIn = keyframes`
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+`;
+
+const slideIn = keyframes`
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+`;
 
 // Styled components
 const Container = styled.div`
@@ -17,6 +31,16 @@ const Container = styled.div`
 
 const ProfileHeader = styled.div`
   margin-bottom: 2rem;
+  animation: ${fadeIn} 0.5s ease-out forwards;
+  
+  h1 {
+    font-size: 2.5rem;
+    font-weight: bold;
+    
+    @media (max-width: 768px) {
+      font-size: 2rem;
+    }
+  }
 `;
 
 const ContentWrapper = styled.div`
@@ -32,9 +56,11 @@ const ContentWrapper = styled.div`
 const Sidebar = styled.div`
   width: 100%;
   margin-bottom: 1.5rem;
+  animation: ${slideIn} 0.5s ease-out forwards;
   
   @media (min-width: 1024px) {
     width: 16rem;
+    flex-shrink: 0;
   }
 `;
 
@@ -42,15 +68,19 @@ const SidebarNav = styled.nav`
   border: 1px solid hsl(var(--border));
   border-radius: 0.5rem;
   overflow: hidden;
+  position: sticky;
+  top: 1.5rem;
+  background-color: hsl(var(--card));
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 `;
 
 const NavItem = styled.a<{ active?: boolean | string }>`
   display: flex;
   align-items: center;
-  padding: 0.75rem 1rem;
+  padding: 0.875rem 1.25rem;
   border-left: 2px solid ${props => props.active ? 'hsl(var(--primary))' : 'transparent'};
   background-color: ${props => props.active ? 'hsla(var(--primary), 0.05)' : 'transparent'};
-  font-weight: ${props => props.active ? '500' : '400'};
+  font-weight: ${props => props.active ? '600' : '400'};
   cursor: pointer;
   transition: all 0.2s;
   
@@ -61,6 +91,9 @@ const NavItem = styled.a<{ active?: boolean | string }>`
 
 const MainContent = styled.div`
   flex: 1;
+  animation: ${fadeIn} 0.5s ease-out forwards;
+  animation-delay: 0.1s;
+  opacity: 0;
 `;
 
 const Section = styled.section`
@@ -71,13 +104,31 @@ const SectionTitle = styled.h2`
   font-size: 1.25rem;
   font-weight: bold;
   margin-bottom: 1.5rem;
+  color: hsl(var(--foreground));
+  display: flex;
+  align-items: center;
+  
+  &::after {
+    content: '';
+    flex-grow: 1;
+    height: 1px;
+    background-color: hsl(var(--border));
+    margin-left: 1rem;
+  }
 `;
 
 const LoadingMessage = styled.div`
-  text-align: center;
-  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 0;
   font-size: 1.125rem;
   color: hsl(var(--muted-foreground));
+  
+  p {
+    margin-top: 1.5rem;
+  }
 `;
 
 const EmptyState = styled.div`
@@ -86,6 +137,7 @@ const EmptyState = styled.div`
   border: 1px dashed hsl(var(--border));
   border-radius: 0.5rem;
   color: hsl(var(--muted-foreground));
+  background-color: hsla(var(--muted), 0.03);
 `;
 
 const SupportSection = styled.div`
@@ -102,6 +154,7 @@ const SupportIntro = styled.div`
   padding: 1.5rem;
   border-radius: 0.75rem;
   color: white;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
 `;
 
 const SupportCard = styled.div`
@@ -123,10 +176,9 @@ const SupportDivider = styled.div`
 
 const AdminSection = styled.div`
   margin-top: 2rem;
-  padding: 1.5rem;
-  background-color: hsl(var(--accent));
-  border-radius: 0.75rem;
-  border: 1px solid hsl(var(--border));
+  animation: ${fadeIn} 0.5s ease-out forwards;
+  animation-delay: 0.2s;
+  opacity: 0;
 `;
 
 const AdminButton = styled.button`
@@ -141,6 +193,8 @@ const AdminButton = styled.button`
   
   &:hover {
     opacity: 0.9;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
   }
 `;
 
@@ -280,7 +334,10 @@ export function ProfilePage() {
   if (isLoading) {
     return (
       <Container>
-        <LoadingMessage>Loading profile...</LoadingMessage>
+        <LoadingMessage>
+          <Loader size={80} />
+          <p>Loading profile...</p>
+        </LoadingMessage>
       </Container>
     );
   }
@@ -289,7 +346,10 @@ export function ProfilePage() {
   if (!currentUser) {
     return (
       <Container>
-        <LoadingMessage>Redirecting to login...</LoadingMessage>
+        <LoadingMessage>
+          <Loader size={80} />
+          <p>Redirecting to login...</p>
+        </LoadingMessage>
       </Container>
     );
   }
@@ -332,18 +392,19 @@ export function ProfilePage() {
         
         <MainContent>
           {activeTab === 'profile' && (
-            <Section>
-              <SectionTitle>Profile</SectionTitle>
+            <StyledContainer withGlow>
               <Dashboard />
-            </Section>
+            </StyledContainer>
           )}
           
           {activeTab === 'orders' && (
             <Section>
-              <SectionTitle>My Tickets</SectionTitle>
+              <SectionTitle>Ticket History</SectionTitle>
               
               {isLoadingTickets ? (
-                <LoadingMessage>Loading your tickets...</LoadingMessage>
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem 0' }}>
+                  <Loader size={50} />
+                </div>
               ) : ticketHistory.length > 0 ? (
                 <TicketHistoryTable>
                   <thead>
@@ -420,13 +481,15 @@ export function ProfilePage() {
               <SectionTitle>Support</SectionTitle>
               
               <SupportContainer>
-                <SupportIntro>
-                  If you need assistance with your purchases, prizes, or have questions about our service, please submit a ticket below. Our team will respond as soon as possible.
-                </SupportIntro>
-                
-                <SupportCard>
-                  <NewTicketForm />
-                </SupportCard>
+                <StyledContainer withGlow>
+                  <SupportIntro>
+                    If you need assistance with your purchases, prizes, or have questions about our service, please submit a ticket below. Our team will respond as soon as possible.
+                  </SupportIntro>
+                  
+                  <SupportCard>
+                    <NewTicketForm />
+                  </SupportCard>
+                </StyledContainer>
                 
                 <SupportDivider />
                 
@@ -439,24 +502,35 @@ export function ProfilePage() {
           {activeTab === 'referrals' && (
             <Section>
               <SectionTitle>My Referrals</SectionTitle>
-              <p style={{ marginBottom: '1.5rem' }}>
-                Earn rewards by referring friends to RuneRaffle. Track your referrals and rewards here.
-              </p>
-              <button 
-                onClick={() => navigate('/referrals')}
-                style={{
-                  padding: '0.75rem 1.5rem',
-                  borderRadius: '0.375rem',
-                  fontSize: '0.875rem',
-                  fontWeight: 500,
-                  backgroundColor: 'hsl(var(--primary))',
-                  color: 'white',
-                  border: 'none',
-                  cursor: 'pointer'
-                }}
-              >
-                Go to Referral Program
-              </button>
+              <StyledContainer withGlow withPattern>
+                <p style={{ marginBottom: '1.5rem' }}>
+                  Earn rewards by referring friends to RuneRaffle. Track your referrals and rewards here.
+                </p>
+                <button 
+                  onClick={() => navigate('/referrals')}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    borderRadius: '0.375rem',
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                    backgroundColor: 'hsl(var(--primary))',
+                    color: 'white',
+                    border: 'none',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(99, 102, 241, 0.2)';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
+                  Go to Referral Program
+                </button>
+              </StyledContainer>
             </Section>
           )}
         </MainContent>
@@ -464,10 +538,12 @@ export function ProfilePage() {
       
       {isAdmin && (
         <AdminSection>
-          <SectionTitle>Admin Tools</SectionTitle>
-          <AdminButton onClick={() => navigate('/admin')}>
-            Go to Admin Dashboard
-          </AdminButton>
+          <StyledContainer withGlow>
+            <SectionTitle>Admin Tools</SectionTitle>
+            <AdminButton onClick={() => navigate('/admin')}>
+              Go to Admin Dashboard
+            </AdminButton>
+          </StyledContainer>
         </AdminSection>
       )}
     </Container>

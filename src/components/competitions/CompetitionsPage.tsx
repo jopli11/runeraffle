@@ -2,6 +2,15 @@ import React, { useState, useEffect } from 'react';
 import styled from '@emotion/styled';
 import { getActiveCompetitions, getCompletedCompetitions, Competition as FirestoreCompetition } from '../../services/firestore';
 import { useNavigate } from 'react-router-dom';
+import { Loader } from '../ui/Loader';
+import { StyledContainer } from '../ui/StyledContainer';
+import { keyframes } from '@emotion/react';
+
+// Animation keyframes
+const fadeIn = keyframes`
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+`;
 
 // Styled components
 const Container = styled.div`
@@ -37,24 +46,29 @@ const FiltersContainer = styled.div`
   gap: 1rem;
   margin-bottom: 2rem;
   flex-wrap: wrap;
+  justify-content: center;
 
   @media (max-width: 768px) {
-    flex-direction: column;
+    justify-content: flex-start;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
   }
 `;
 
 const FilterButton = styled.button<{ active: boolean }>`
-  padding: 0.5rem 1rem;
-  border-radius: 0.375rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 0.5rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
   background-color: ${props => props.active ? 'hsl(var(--primary))' : 'rgba(255, 255, 255, 0.05)'};
   color: ${props => props.active ? 'white' : 'rgba(255, 255, 255, 0.8)'};
   border: none;
+  box-shadow: ${props => props.active ? '0 4px 12px rgba(99, 102, 241, 0.2)' : 'none'};
   
   &:hover {
     background-color: ${props => props.active ? 'hsl(var(--primary))' : 'rgba(255, 255, 255, 0.1)'};
+    transform: translateY(-2px);
   }
 `;
 
@@ -69,6 +83,13 @@ const CompetitionListHeader = styled.div`
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+  
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 `;
 
 const ListHeading = styled.h2`
@@ -104,7 +125,7 @@ const Select = styled.select`
 
 const CompetitionGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 1.5rem;
 `;
 
@@ -112,13 +133,14 @@ const CompetitionCard = styled.div`
   border-radius: 0.75rem;
   overflow: hidden;
   background-color: hsl(var(--card));
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
   cursor: pointer;
+  animation: ${fadeIn} 0.5s ease-out forwards;
   
   &:hover {
     transform: translateY(-5px);
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 15px 25px -5px rgba(0, 0, 0, 0.1);
   }
 `;
 
@@ -423,63 +445,64 @@ interface Competition {
 
 export default function CompetitionsPage() {
   const [filter, setFilter] = useState<'all' | 'active' | 'ending' | 'completed'>('all');
-  const [sortBy, setSortBy] = useState<'newest' | 'popular' | 'priceAsc' | 'priceDesc'>('newest');
   const [competitions, setCompetitions] = useState<FirestoreCompetition[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<string>('popularity');
   const navigate = useNavigate();
 
-  // Fetch competitions from Firestore
   useEffect(() => {
-    const fetchCompetitions = async () => {
-      setLoading(true);
-      try {
-        let competitionsData: FirestoreCompetition[] = [];
-        
-        if (filter === 'completed') {
-          competitionsData = await getCompletedCompetitions();
-        } else {
-          // For 'all', 'active', or 'ending' filters, start with all active competitions
-          const activeCompetitions = await getActiveCompetitions();
-          
-          // Then filter as needed
-          if (filter === 'active') {
-            competitionsData = activeCompetitions.filter(comp => comp.status === 'active');
-          } else if (filter === 'ending') {
-            competitionsData = activeCompetitions.filter(comp => comp.status === 'ending');
-          } else {
-            // 'all' filter
-            competitionsData = activeCompetitions;
-          }
-        }
-        
-        // Sort competitions
-        competitionsData = sortCompetitions(competitionsData, sortBy);
-        
-        setCompetitions(competitionsData);
-        setError(null);
-      } catch (err) {
-        console.error('Error fetching competitions:', err);
-        setError('Failed to load competitions. Please try again later.');
-        setCompetitions([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
     fetchCompetitions();
-  }, [filter, sortBy]);
-  
+  }, [filter]);
+
+  const fetchCompetitions = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      let comps: FirestoreCompetition[] = [];
+      
+      if (filter === 'completed') {
+        comps = await getCompletedCompetitions();
+      } else {
+        comps = await getActiveCompetitions();
+        
+        // Filter by status if needed
+        if (filter === 'active') {
+          comps = comps.filter(comp => comp.status === 'active');
+        } else if (filter === 'ending') {
+          comps = comps.filter(comp => comp.status === 'ending');
+        }
+      }
+      
+      // Apply sorting
+      const sortedComps = sortCompetitions(comps, sortBy);
+      setCompetitions(sortedComps);
+      
+    } catch (err) {
+      console.error('Error fetching competitions:', err);
+      setError('Failed to load competitions. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Function to sort competitions based on selected sort option
   const sortCompetitions = (comps: FirestoreCompetition[], sort: string) => {
     switch (sort) {
+      case 'popularity':
+        return [...comps].sort((a, b) => (b.ticketsSold / b.totalTickets) - (a.ticketsSold / a.totalTickets));
       case 'newest':
         return [...comps].sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-      case 'popular':
-        return [...comps].sort((a, b) => (b.ticketsSold / b.totalTickets) - (a.ticketsSold / a.totalTickets));
-      case 'priceAsc':
+      case 'ending-soon':
+        return [...comps].sort((a, b) => {
+          const aEndsAt = a.endsAt ? new Date(a.endsAt.seconds * 1000) : new Date(0);
+          const bEndsAt = b.endsAt ? new Date(b.endsAt.seconds * 1000) : new Date(0);
+          return aEndsAt.getTime() - bEndsAt.getTime();
+        });
+      case 'price-low':
         return [...comps].sort((a, b) => a.ticketPrice - b.ticketPrice);
-      case 'priceDesc':
+      case 'price-high':
         return [...comps].sort((a, b) => b.ticketPrice - a.ticketPrice);
       default:
         return comps;
@@ -493,140 +516,164 @@ export default function CompetitionsPage() {
   return (
     <Container>
       <PageHeader>
-        <Heading1>Browse Competitions</Heading1>
+        <Heading1>Competitions</Heading1>
         <Description>
-          Explore available competitions, buy tickets, and win awesome prizes!
+          Browse and enter our current RuneScape raffles. Each entry gives you a chance to win 
+          valuable items with our provably fair drawing system.
         </Description>
       </PageHeader>
       
-      <FiltersContainer>
-        <FilterButton 
-          active={filter === 'all'} 
-          onClick={() => setFilter('all')}
-        >
-          All Competitions
-        </FilterButton>
-        <FilterButton 
-          active={filter === 'active'} 
-          onClick={() => setFilter('active')}
-        >
-          Active
-        </FilterButton>
-        <FilterButton 
-          active={filter === 'ending'} 
-          onClick={() => setFilter('ending')}
-        >
-          Ending Soon
-        </FilterButton>
-        <FilterButton 
-          active={filter === 'completed'} 
-          onClick={() => setFilter('completed')}
-        >
-          Completed
-        </FilterButton>
-      </FiltersContainer>
-      
-      <Separator />
-      
-      <CompetitionListHeader>
-        <ListHeading>
-          {filter === 'all' ? 'All Competitions' : 
-           filter === 'active' ? 'Active Competitions' :
-           filter === 'ending' ? 'Ending Soon' :
-           'Completed Competitions'}
-        </ListHeading>
-        
-        <SortContainer>
-          <SortLabel>Sort by:</SortLabel>
-          <Select 
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as any)}
+      <StyledContainer withGlow>
+        <FiltersContainer>
+          <FilterButton 
+            active={filter === 'all'} 
+            onClick={() => setFilter('all')}
           >
-            <option value="newest">Newest</option>
-            <option value="popular">Most Popular</option>
-            <option value="priceAsc">Price: Low to High</option>
-            <option value="priceDesc">Price: High to Low</option>
-          </Select>
-        </SortContainer>
-      </CompetitionListHeader>
-      
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: '2rem' }}>Loading competitions...</div>
-      ) : error ? (
-        <div style={{ textAlign: 'center', padding: '2rem', color: 'red' }}>{error}</div>
-      ) : competitions.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '2rem' }}>No competitions found for the selected filter.</div>
-      ) : (
-        <CompetitionGrid>
-          {competitions.map((competition) => (
-            <CompetitionCard 
-              key={competition.id} 
-              onClick={() => handleCompetitionClick(competition.id!)}
+            All Competitions
+          </FilterButton>
+          <FilterButton 
+            active={filter === 'active'} 
+            onClick={() => setFilter('active')}
+          >
+            Active
+          </FilterButton>
+          <FilterButton 
+            active={filter === 'ending'} 
+            onClick={() => setFilter('ending')}
+          >
+            Ending Soon
+          </FilterButton>
+          <FilterButton 
+            active={filter === 'completed'} 
+            onClick={() => setFilter('completed')}
+          >
+            Completed
+          </FilterButton>
+        </FiltersContainer>
+        
+        <CompetitionListHeader>
+          <ListHeading>
+            {filter === 'all' ? 'All Competitions' : 
+             filter === 'active' ? 'Active Competitions' : 
+             filter === 'ending' ? 'Ending Soon' : 'Completed Competitions'}
+          </ListHeading>
+          
+          <SortContainer>
+            <SortLabel>Sort by:</SortLabel>
+            <Select 
+              value={sortBy}
+              onChange={(e) => {
+                setSortBy(e.target.value);
+                setCompetitions(sortCompetitions(competitions, e.target.value));
+              }}
             >
-              <CardImageContainer>
-                {competition.imageUrl ? (
-                  <CompetitionImage src={competition.imageUrl} alt={competition.title} />
-                ) : (
-                  <IconContainer>
-                    <TimerIcon />
-                  </IconContainer>
-                )}
-                <CardBadges>
-                  <StatusBadge status={competition.status as 'active' | 'ending' | 'complete'}>
-                    {competition.status}
-                  </StatusBadge>
-                  <DifficultyBadge difficulty={competition.difficulty}>
-                    {competition.difficulty}
-                  </DifficultyBadge>
-                </CardBadges>
-              </CardImageContainer>
-              
-              <CardContent>
-                <PrizeValue>{competition.prizeValue}</PrizeValue>
-                <CardTitle>{competition.title}</CardTitle>
-                <CardDescription>{competition.description}</CardDescription>
+              <option value="popularity">Popularity</option>
+              <option value="newest">Newest</option>
+              <option value="ending-soon">Ending Soon</option>
+              <option value="price-low">Price: Low to High</option>
+              <option value="price-high">Price: High to Low</option>
+            </Select>
+          </SortContainer>
+        </CompetitionListHeader>
+        
+        {loading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem 0' }}>
+            <Loader />
+          </div>
+        ) : error ? (
+          <div style={{ textAlign: 'center', padding: '2rem' }}>
+            <p style={{ color: 'hsl(var(--destructive))', marginBottom: '1rem' }}>{error}</p>
+            <button 
+              onClick={fetchCompetitions} 
+              style={{
+                padding: '0.5rem 1rem',
+                borderRadius: '0.375rem',
+                backgroundColor: 'hsl(var(--primary))',
+                color: 'white',
+                border: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              Try Again
+            </button>
+          </div>
+        ) : competitions.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '2rem' }}>
+            No competitions found for the selected filter.
+          </div>
+        ) : (
+          <CompetitionGrid>
+            {competitions.map((competition, index) => (
+              <CompetitionCard 
+                key={competition.id} 
+                onClick={() => handleCompetitionClick(competition.id!)}
+                style={{ animationDelay: `${index * 0.05}s` }}
+              >
+                <CardImageContainer>
+                  {competition.imageUrl ? (
+                    <CompetitionImage src={competition.imageUrl} alt={competition.title} />
+                  ) : (
+                    <IconContainer>
+                      <TimerIcon />
+                    </IconContainer>
+                  )}
+                  <CardBadges>
+                    <StatusBadge status={competition.status as 'active' | 'ending' | 'complete'}>
+                      {competition.status}
+                    </StatusBadge>
+                    <DifficultyBadge difficulty={competition.difficulty}>
+                      {competition.difficulty}
+                    </DifficultyBadge>
+                  </CardBadges>
+                </CardImageContainer>
                 
-                <ProgressContainer>
-                  <ProgressBarOuter>
-                    <ProgressBarInner width={`${(competition.ticketsSold / competition.totalTickets) * 100}%`} />
-                  </ProgressBarOuter>
-                  <ProgressDetails>
-                    <span>{competition.ticketsSold} / {competition.totalTickets} tickets sold</span>
-                    <span>{Math.round((competition.ticketsSold / competition.totalTickets) * 100)}%</span>
-                  </ProgressDetails>
-                </ProgressContainer>
-                
-                <CardFooter>
-                  <div>
-                    <div style={{ fontWeight: 'bold', fontSize: '1.125rem' }}>
-                      {competition.ticketPrice} credits
-                    </div>
-                    <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>
-                      per ticket
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <div style={{ color: 'rgb(14, 165, 233)' }}>
-                        <TimerIcon />
+                <CardContent>
+                  <PrizeValue>{competition.prizeValue}</PrizeValue>
+                  <CardTitle>{competition.title}</CardTitle>
+                  <CardDescription>{competition.description}</CardDescription>
+                  
+                  <ProgressContainer>
+                    <ProgressBarOuter>
+                      <ProgressBarInner width={`${(competition.ticketsSold / competition.totalTickets) * 100}%`} />
+                    </ProgressBarOuter>
+                    <ProgressDetails>
+                      <span>{competition.ticketsSold} / {competition.totalTickets} tickets sold</span>
+                      <span>{Math.round((competition.ticketsSold / competition.totalTickets) * 100)}%</span>
+                    </ProgressDetails>
+                  </ProgressContainer>
+                  
+                  <CardFooter>
+                    <div>
+                      <div style={{ fontWeight: 'bold', fontSize: '1.125rem' }}>
+                        {competition.ticketPrice} credits
                       </div>
-                      <div style={{ fontWeight: 'bold' }}>
-                        {competition.status === 'complete' 
-                          ? 'Completed' 
-                          : formatTimeLeft(competition.endsAt)
-                        }
+                      <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>
+                        per ticket
                       </div>
                     </div>
-                    <div style={{ fontSize: '0.75rem', opacity: 0.7, textAlign: 'right' }}>
-                      {competition.status === 'complete' ? 'Winner drawn' : 'remaining'}
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <div style={{ color: 'rgb(14, 165, 233)' }}>
+                          <TimerIcon />
+                        </div>
+                        <div style={{ fontWeight: 'bold' }}>
+                          {competition.status === 'complete' 
+                            ? 'Completed' 
+                            : formatTimeLeft(competition.endsAt)
+                          }
+                        </div>
+                      </div>
+                      <div style={{ fontSize: '0.75rem', opacity: 0.7, textAlign: 'right' }}>
+                        {competition.status === 'complete' ? 'Winner drawn' : 'remaining'}
+                      </div>
                     </div>
-                  </div>
-                </CardFooter>
-              </CardContent>
-            </CompetitionCard>
-          ))}
-        </CompetitionGrid>
-      )}
+                  </CardFooter>
+                </CardContent>
+              </CompetitionCard>
+            ))}
+          </CompetitionGrid>
+        )}
+      </StyledContainer>
     </Container>
   );
 } 
