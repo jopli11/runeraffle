@@ -10,6 +10,7 @@ import WinnersPage from './winners/WinnersPage';
 import { HowItWorksPage } from './howItWorks/HowItWorksPage';
 import AuthPage from './auth/AuthPage';
 import AdminDashboard from './admin/AdminDashboard';
+import VerificationPage from './verification/VerificationPage';
 import { AuthProvider } from '../context/AuthContext';
 import styled from '@emotion/styled';
 
@@ -40,6 +41,7 @@ export default function Router() {
               <Route path="/competitions" element={<CompetitionsPage />} />
               <Route path="/competition/:id" element={<CompetitionPage />} />
               <Route path="/winners" element={<WinnersPage />} />
+              <Route path="/verification/:id" element={<VerificationPage />} />
               <Route path="/how-it-works" element={<HowItWorksPage />} />
               <Route path="/login" element={<AuthPage />} />
               <Route path="/register" element={<AuthPage />} />

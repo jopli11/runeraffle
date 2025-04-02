@@ -164,6 +164,7 @@ const VerificationLink = styled.a`
   align-items: center;
   gap: 0.25rem;
   margin-top: 0.5rem;
+  cursor: pointer;
   
   &:hover {
     text-decoration: underline;
@@ -345,13 +346,9 @@ export default function WinnersPage() {
                     </VerificationItem>
                   )}
                 </VerificationDetails>
-                <VerificationLink href="#" onClick={(e) => {
+                <VerificationLink onClick={(e) => {
                   e.preventDefault();
-                  alert('Verification details: ' + JSON.stringify({
-                    seed: competition.seed,
-                    blockHash: competition.blockHash,
-                    winningTicket: competition.winningTicket
-                  }, null, 2));
+                  navigate(`/verification/${competition.id}`);
                 }}>
                   View full verification details <ExternalLinkIcon />
                 </VerificationLink>
