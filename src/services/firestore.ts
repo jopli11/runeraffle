@@ -1,6 +1,8 @@
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/firestore';
 import { db } from '../config/firebase';
+import { notifyTicketPurchase } from './notificationService';
+import { sendTicketPurchaseEmail } from './emailService';
 
 // Types
 export interface Competition {
@@ -181,6 +183,33 @@ export const buyTicket = async (ticket: Omit<Ticket, 'id' | 'purchasedAt' | 'isW
       ticketsSold: competition.ticketsSold + 1,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
+    
+    // Create notification for the user
+    await notifyTicketPurchase(
+      ticket.userId,
+      ticket.competitionId,
+      docRef.id,
+      competition.title,
+      ticket.ticketNumber
+    );
+    
+    // Get user info for email
+    const userSnapshot = await db.collection('users').doc(ticket.userId).get();
+    if (userSnapshot.exists) {
+      const userData = userSnapshot.data();
+      if (userData && userData.email) {
+        // Send purchase confirmation email
+        sendTicketPurchaseEmail(
+          userData.email,
+          userData.displayName || 'User',
+          competition.title,
+          ticket.ticketNumber,
+          new Date(),
+          competition.endsAt.toDate(),
+          ticket.competitionId
+        ).catch(err => console.error('Error sending email:', err));
+      }
+    }
   }
   
   return docRef.id;

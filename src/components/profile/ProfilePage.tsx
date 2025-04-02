@@ -144,6 +144,90 @@ const AdminButton = styled.button`
   }
 `;
 
+const TicketHistoryTable = styled.table`
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+`;
+
+const TableHeader = styled.th`
+  text-align: left;
+  padding: 1rem;
+  background-color: hsl(var(--card));
+  color: white;
+  font-weight: 600;
+  font-size: 0.875rem;
+  
+  &:first-of-type {
+    border-top-left-radius: 0.5rem;
+  }
+  
+  &:last-of-type {
+    border-top-right-radius: 0.5rem;
+  }
+`;
+
+const TableRow = styled.tr<{ isWinner?: boolean }>`
+  background-color: ${props => props.isWinner ? 'rgba(22, 163, 74, 0.05)' : 'transparent'};
+  
+  &:hover {
+    background-color: hsla(var(--muted), 0.05);
+  }
+`;
+
+const TableCell = styled.td`
+  padding: 1rem;
+  border-bottom: 1px solid hsl(var(--border));
+  font-size: 0.875rem;
+`;
+
+const CompetitionLink = styled.a`
+  color: hsl(var(--primary));
+  text-decoration: none;
+  cursor: pointer;
+  
+  &:hover {
+    text-decoration: underline;
+  }
+`;
+
+const StatusBadge = styled.span<{ status: 'active' | 'ending' | 'ended' | 'winner' }>`
+  display: inline-block;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background-color: ${props => 
+    props.status === 'active' ? 'rgba(59, 130, 246, 0.2)' : 
+    props.status === 'ending' ? 'rgba(245, 158, 11, 0.2)' : 
+    props.status === 'winner' ? 'rgba(22, 163, 74, 0.2)' : 
+    'rgba(255, 255, 255, 0.1)'};
+  color: ${props => 
+    props.status === 'active' ? 'rgb(59, 130, 246)' : 
+    props.status === 'ending' ? 'rgb(245, 158, 11)' : 
+    props.status === 'winner' ? 'rgb(22, 163, 74)' : 
+    'white'};
+`;
+
+const ActionButton = styled.button`
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background-color: rgba(255, 255, 255, 0.05);
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+`;
+
 export function ProfilePage() {
   const { currentUser, isLoading, isAdmin } = useAuth();
   const navigate = useNavigate();
@@ -255,10 +339,52 @@ export function ProfilePage() {
               {isLoadingTickets ? (
                 <LoadingMessage>Loading your tickets...</LoadingMessage>
               ) : ticketHistory.length > 0 ? (
-                <div>
-                  {/* Ticket history would go here */}
-                  <p>You have {ticketHistory.length} tickets.</p>
-                </div>
+                <TicketHistoryTable>
+                  <thead>
+                    <tr>
+                      <TableHeader>Ticket #</TableHeader>
+                      <TableHeader>Competition</TableHeader>
+                      <TableHeader>Purchase Date</TableHeader>
+                      <TableHeader>Price</TableHeader>
+                      <TableHeader>Status</TableHeader>
+                      <TableHeader>Actions</TableHeader>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ticketHistory.map(ticket => (
+                      <TableRow key={ticket.id} isWinner={ticket.isWinner}>
+                        <TableCell>{ticket.ticketNumber}</TableCell>
+                        <TableCell>
+                          <CompetitionLink onClick={() => navigate(`/competition/${ticket.competitionId}`)}>
+                            {ticket.competition?.title || 'Unknown Competition'}
+                          </CompetitionLink>
+                        </TableCell>
+                        <TableCell>{formatDate(ticket.purchasedAt)}</TableCell>
+                        <TableCell>{ticket.competition?.ticketPrice || 0} credits</TableCell>
+                        <TableCell>
+                          <StatusBadge status={ticket.isWinner ? 'winner' : ticket.competition?.status === 'complete' ? 'ended' : 'active'}>
+                            {ticket.isWinner ? '🏆 Winner' : 
+                             ticket.competition?.status === 'complete' ? 'Ended' : 
+                             ticket.competition?.status === 'ending' ? 'Ending Soon' : 'Active'}
+                          </StatusBadge>
+                        </TableCell>
+                        <TableCell>
+                          <ActionButton onClick={() => navigate(`/competition/${ticket.competitionId}`)}>
+                            View
+                          </ActionButton>
+                          {ticket.isWinner && (
+                            <ActionButton 
+                              style={{ marginLeft: '0.5rem', backgroundColor: 'rgba(22, 163, 74, 0.2)', color: 'rgb(22, 163, 74)' }}
+                              onClick={() => navigate(`/verification/${ticket.competitionId}`)}
+                            >
+                              Verify
+                            </ActionButton>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </tbody>
+                </TicketHistoryTable>
               ) : (
                 <EmptyState>
                   <p>You haven't entered any competitions yet.</p>
@@ -316,4 +442,12 @@ export function ProfilePage() {
       )}
     </Container>
   );
-} 
+}
+
+// Helper function to format timestamp
+const formatDate = (timestamp: any) => {
+  if (!timestamp || !timestamp.toDate) return 'Unknown date';
+  
+  const date = timestamp.toDate();
+  return new Date(date).toLocaleDateString();
+}; 

@@ -10,6 +10,8 @@ import {
   Competition 
 } from './firestore';
 import { generateSeed, simulateBlockHash, browserCompatibleDrawing } from '../utils/drawingSystem';
+import { notifyWinner, notifyCompetitionEnding } from './notificationService';
+import { sendWinnerEmail } from './emailService';
 
 /**
  * Checks for competitions that have ended but haven't been marked as complete
@@ -123,6 +125,27 @@ export async function endCompetition(competitionId: string): Promise<boolean> {
       winningTicket
     );
     
+    // Send notification to the winner
+    await notifyWinner(
+      winnerTicket.userId,
+      competitionId,
+      competition.title,
+      competition.prize,
+      competition.imageUrl
+    );
+    
+    // Send email to winner
+    if (userData && userData.email) {
+      await sendWinnerEmail(
+        userData.email,
+        userData.displayName || 'User',
+        competition.title,
+        competition.prize,
+        competition.prizeValue,
+        competitionId
+      ).catch(err => console.error('Error sending winner email:', err));
+    }
+    
     console.log(`Competition ${competitionId} ended. Winner: ${userData?.displayName}, Ticket: ${winningTicket}`);
     return true;
   } catch (error) {
@@ -156,13 +179,43 @@ export async function updateEndingSoonCompetitions(): Promise<void> {
     // Update them to "ending" status
     const batch = db.batch();
     
-    snapshot.docs.forEach(doc => {
+    // For each competition, we need to:
+    // 1. Update status to "ending"
+    // 2. Notify all participants that the competition is ending soon
+    for (const doc of snapshot.docs) {
       const competitionRef = db.collection('competitions').doc(doc.id);
+      const competitionData = doc.data() as Competition;
+      
+      // Update status
       batch.update(competitionRef, {
         status: 'ending',
         updatedAt: now
       });
-    });
+      
+      // Get all tickets for this competition to find participants
+      const ticketsSnapshot = await db.collection('tickets')
+        .where('competitionId', '==', doc.id)
+        .get();
+      
+      // Create a Set to store unique user IDs
+      const participantIds = new Set<string>();
+      
+      // Collect unique participant IDs
+      ticketsSnapshot.docs.forEach(ticketDoc => {
+        const ticketData = ticketDoc.data();
+        participantIds.add(ticketData.userId);
+      });
+      
+      // Notify each participant
+      for (const userId of participantIds) {
+        await notifyCompetitionEnding(
+          userId,
+          doc.id,
+          competitionData.title,
+          competitionData.imageUrl
+        );
+      }
+    }
     
     await batch.commit();
     

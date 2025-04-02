@@ -4,6 +4,7 @@ import styled from '@emotion/styled';
 import { useAuth } from '../../context/AuthContext';
 import { logOut } from '../../config/firebase';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import NotificationCenter from './NotificationCenter';
 
 // Styled components
 const HeaderContainer = styled.header`
@@ -240,6 +241,7 @@ export function Header() {
                   </CreditIcon>
                   <CreditValue>{userCredits}</CreditValue>
                 </CreditContainer>
+                <NotificationCenter />
                 <GhostButton onClick={() => navigate('/profile')}>
                   Profile
                 </GhostButton>
