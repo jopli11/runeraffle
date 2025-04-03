@@ -163,7 +163,9 @@ export default function AdminCompetitionForm({ competitionId, onCancel, onSucces
     ticketPrice: 3,
     totalTickets: 500,
     endsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 7 days from now
-    status: 'active'
+    status: 'active',
+    triviaQuestion: '',
+    triviaAnswer: ''
   });
   
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -186,7 +188,7 @@ export default function AdminCompetitionForm({ competitionId, onCancel, onSucces
       // Validate required fields
       if (!formData.title || !formData.description || !formData.prize || 
           !formData.prizeValue || !formData.ticketPrice || !formData.totalTickets || 
-          !formData.endsAt) {
+          !formData.endsAt || !formData.triviaQuestion || !formData.triviaAnswer) {
         throw new Error('Please fill in all required fields.');
       }
       
@@ -364,6 +366,33 @@ export default function AdminCompetitionForm({ competitionId, onCancel, onSucces
             type="date"
             value={formData.endsAt}
             onChange={handleChange}
+            required
+          />
+        </FormGroup>
+        
+        <FormGroup>
+          <Label htmlFor="triviaQuestion">Trivia Question*</Label>
+          <TextArea
+            id="triviaQuestion"
+            name="triviaQuestion"
+            value={formData.triviaQuestion}
+            onChange={handleChange}
+            placeholder="Enter a RuneScape related trivia question"
+            required
+          />
+          <div style={{ fontSize: '0.75rem', marginTop: '0.25rem', opacity: 0.7 }}>
+            Trivia questions help classify competitions as skill-based contests
+          </div>
+        </FormGroup>
+        
+        <FormGroup>
+          <Label htmlFor="triviaAnswer">Correct Answer*</Label>
+          <Input
+            id="triviaAnswer"
+            name="triviaAnswer"
+            value={formData.triviaAnswer}
+            onChange={handleChange}
+            placeholder="Enter the correct answer to the trivia question"
             required
           />
         </FormGroup>

@@ -124,55 +124,88 @@ const SuccessMessage = styled.div`
 `;
 
 interface TicketPurchaseProps {
-  competition: Competition;
+  competition?: Competition;
   onPurchaseComplete?: () => void;
+  ticketCount?: number;
+  ticketPrice?: number;
+  onIncrement?: () => void;
+  onDecrement?: () => void;
+  onPurchase?: () => Promise<void>;
+  loading?: boolean;
+  success?: boolean;
+  disabled?: boolean;
 }
 
-export function TicketPurchase({ competition, onPurchaseComplete }: TicketPurchaseProps) {
+export function TicketPurchase({ 
+  competition, 
+  onPurchaseComplete,
+  ticketCount: externalTicketCount,
+  ticketPrice: externalTicketPrice,
+  onIncrement: externalIncrement,
+  onDecrement: externalDecrement,
+  onPurchase: externalPurchase,
+  loading: externalLoading,
+  success: externalSuccess,
+  disabled: externalDisabled
+}: TicketPurchaseProps) {
   const { currentUser, userCredits, setUserCredits } = useAuth();
-  const [ticketCount, setTicketCount] = useState(1);
+  const [internalTicketCount, setInternalTicketCount] = useState(1);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [internalSuccess, setInternalSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Reset states when competition changes
+  const ticketCount = externalTicketCount !== undefined ? externalTicketCount : internalTicketCount;
+  const ticketPrice = externalTicketPrice !== undefined ? externalTicketPrice : competition?.ticketPrice || 0;
+  const isLoading = externalLoading !== undefined ? externalLoading : isProcessing;
+  const isSuccess = externalSuccess !== undefined ? externalSuccess : internalSuccess;
+  const isDisabled = externalDisabled !== undefined ? externalDisabled : false;
+  
   useEffect(() => {
-    setTicketCount(1);
-    setSuccess(false);
-    setError(null);
-  }, [competition.id]);
+    if (competition) {
+      setInternalTicketCount(1);
+      setInternalSuccess(false);
+      setError(null);
+    }
+  }, [competition?.id]);
   
-  const maxTicketsAvailable = competition.totalTickets - competition.ticketsSold;
-  const maxTicketsAffordable = Math.floor(userCredits / competition.ticketPrice);
-  const maxTickets = Math.min(maxTicketsAvailable, maxTicketsAffordable, 10); // Limit to 10 tickets max per purchase
+  const maxTicketsAvailable = competition ? competition.totalTickets - competition.ticketsSold : 99;
+  const maxTicketsAffordable = Math.floor(userCredits / ticketPrice);
+  const maxTickets = Math.min(maxTicketsAvailable, maxTicketsAffordable, 10);
   
-  const totalCost = ticketCount * competition.ticketPrice;
+  const totalCost = ticketCount * ticketPrice;
   const notEnoughCredits = userCredits < totalCost;
   
   const handleIncrement = () => {
-    if (ticketCount < maxTickets) {
-      setTicketCount(prev => prev + 1);
+    if (externalIncrement) {
+      externalIncrement();
+    } else if (ticketCount < maxTickets) {
+      setInternalTicketCount(prev => prev + 1);
     }
   };
   
   const handleDecrement = () => {
-    if (ticketCount > 1) {
-      setTicketCount(prev => prev - 1);
+    if (externalDecrement) {
+      externalDecrement();
+    } else if (ticketCount > 1) {
+      setInternalTicketCount(prev => prev - 1);
     }
   };
   
   const handlePurchase = async () => {
-    if (!currentUser || !competition.id) return;
+    if (externalPurchase) {
+      await externalPurchase();
+      return;
+    }
+    
+    if (!currentUser || !competition?.id) return;
     if (notEnoughCredits) return;
     
     setIsProcessing(true);
     setError(null);
     
     try {
-      // Calculate the starting ticket number
       const startingTicketNumber = competition.ticketsSold + 1;
       
-      // Purchase each ticket
       const ticketPromises = [];
       for (let i = 0; i < ticketCount; i++) {
         const ticketNumber = startingTicketNumber + i;
@@ -180,37 +213,37 @@ export function TicketPurchase({ competition, onPurchaseComplete }: TicketPurcha
           buyTicket({
             competitionId: competition.id,
             userId: currentUser.uid,
-            ticketNumber,
-            isWinner: false
+            ticketNumber
           })
         );
       }
       
-      // Wait for all tickets to be purchased
       await Promise.all(ticketPromises);
       
-      // Update user credits
       const newCredits = userCredits - totalCost;
-      await updateUserCredits(currentUser.email, newCredits);
-      setUserCredits(newCredits);
+      if (currentUser.email) {
+        await updateUserCredits(currentUser.email, newCredits);
+        setUserCredits(newCredits);
+      }
       
-      // Show success message
-      setSuccess(true);
+      setInternalSuccess(true);
       
-      // Notify parent component
       if (onPurchaseComplete) {
         onPurchaseComplete();
       }
-    } catch (error) {
-      console.error('Error purchasing tickets:', error);
-      setError('An error occurred while purchasing tickets. Please try again.');
+      
+      setTimeout(() => {
+        setInternalSuccess(false);
+      }, 3000);
+    } catch (err: any) {
+      console.error('Error purchasing tickets:', err);
+      setError(err.message || 'Failed to purchase tickets');
     } finally {
       setIsProcessing(false);
     }
   };
   
-  // If competition is not active, don't show purchase form
-  if (competition.status !== 'active') {
+  if (competition?.status !== 'active') {
     return (
       <PurchaseContainer>
         <Title>Ticket Purchase</Title>
@@ -219,7 +252,6 @@ export function TicketPurchase({ competition, onPurchaseComplete }: TicketPurcha
     );
   }
   
-  // If no tickets are available, show message
   if (maxTicketsAvailable <= 0) {
     return (
       <PurchaseContainer>
@@ -233,14 +265,14 @@ export function TicketPurchase({ competition, onPurchaseComplete }: TicketPurcha
     <PurchaseContainer>
       <Title>Purchase Tickets</Title>
       
-      {success ? (
+      {isSuccess ? (
         <>
           <SuccessMessage>
             Congratulations! You have successfully purchased {ticketCount} ticket{ticketCount !== 1 ? 's' : ''}.
           </SuccessMessage>
           <Button
             variant="primary"
-            onClick={() => setSuccess(false)}
+            onClick={() => setInternalSuccess(false)}
           >
             Purchase More Tickets
           </Button>
@@ -255,14 +287,14 @@ export function TicketPurchase({ competition, onPurchaseComplete }: TicketPurcha
           <TicketControls>
             <TicketButton 
               onClick={handleDecrement}
-              disabled={ticketCount <= 1 || isProcessing}
+              disabled={ticketCount <= 1 || isLoading}
             >
               -
             </TicketButton>
             <TicketCount>{ticketCount}</TicketCount>
             <TicketButton 
               onClick={handleIncrement}
-              disabled={ticketCount >= maxTickets || isProcessing}
+              disabled={ticketCount >= maxTickets || isLoading}
             >
               +
             </TicketButton>
@@ -271,7 +303,7 @@ export function TicketPurchase({ competition, onPurchaseComplete }: TicketPurcha
           <PurchaseSummary>
             <SummaryRow>
               <div>Ticket Price:</div>
-              <div>{competition.ticketPrice} credits</div>
+              <div>{ticketPrice} credits</div>
             </SummaryRow>
             <SummaryRow>
               <div>Quantity:</div>
@@ -298,9 +330,9 @@ export function TicketPurchase({ competition, onPurchaseComplete }: TicketPurcha
           <Button
             variant="primary"
             onClick={handlePurchase}
-            disabled={notEnoughCredits || isProcessing || ticketCount <= 0}
+            disabled={notEnoughCredits || isLoading || ticketCount <= 0}
           >
-            {isProcessing ? 'Processing...' : `Buy ${ticketCount} Ticket${ticketCount !== 1 ? 's' : ''}`}
+            {isLoading ? 'Processing...' : `Buy ${ticketCount} Ticket${ticketCount !== 1 ? 's' : ''}`}
           </Button>
         </>
       )}

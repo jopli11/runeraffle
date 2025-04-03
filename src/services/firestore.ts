@@ -29,6 +29,8 @@ export interface Competition {
   seed?: string;
   blockHash?: string;
   winningTicket?: number;
+  triviaQuestion?: string;
+  triviaAnswer?: string;
 }
 
 export interface Ticket {
@@ -116,7 +118,10 @@ export const createCompetition = async (competition: Omit<Competition, 'id' | 'c
     ...competition,
     ticketsSold: 0,
     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    // Set default values for trivia question/answer if they're missing
+    triviaQuestion: competition.triviaQuestion || 'What game is RuneScape developed by?',
+    triviaAnswer: competition.triviaAnswer || 'Jagex'
   };
   
   const docRef = await competitionsRef.add(newCompetition);
