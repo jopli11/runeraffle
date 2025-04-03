@@ -191,6 +191,7 @@ const FeaturedCompetition = styled.div`
   
   &:hover {
     transform: translateY(-5px);
+    cursor: pointer;
   }
 `;
 
@@ -821,7 +822,7 @@ export default function App() {
           </StyledContainer>
         ) : (
           <StyledContainer withGlow withPattern>
-            <FeaturedCompetition>
+            <FeaturedCompetition onClick={() => featuredCompetition.id && handleNavigateToCompetition(featuredCompetition.id)}>
               <CompetitionContent>
                 <CompetitionDetails>
                   <BadgeContainer>
@@ -899,6 +900,15 @@ export default function App() {
                           : `Buy ${ticketCount} Ticket${ticketCount > 1 ? 's' : ''} (${ticketCount * featuredCompetition.ticketPrice} Credits)`
                     }
                   </PrimaryButton>
+                  
+                  <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                    <SecondaryButton onClick={(e) => {
+                      e.stopPropagation();
+                      featuredCompetition.id && handleNavigateToCompetition(featuredCompetition.id);
+                    }}>
+                      View Details
+                    </SecondaryButton>
+                  </div>
                   
                   {currentUser && userCredits < featuredCompetition.ticketPrice && (
                     <div style={{ marginTop: '0.75rem', textAlign: 'center', fontSize: '0.875rem' }}>
