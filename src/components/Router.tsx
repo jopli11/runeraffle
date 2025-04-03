@@ -15,6 +15,8 @@ import VerificationPage from './verification/VerificationPage';
 import { AuthProvider } from '../context/AuthContext';
 import styled from '@emotion/styled';
 import { SupportPage } from './support/SupportPage';
+import TermsOfService from './legal/TermsOfService';
+import PrivacyPolicy from './legal/PrivacyPolicy';
 
 // Define main layout components
 const PageWrapper = styled.div`
@@ -58,6 +60,10 @@ export default function Router() {
               <Route path="/admin/analytics" element={<AdminDashboard />} />
               
               <Route path="/support" element={<SupportPage />} />
+              
+              {/* Legal pages */}
+              <Route path="/terms" element={<TermsOfService />} />
+              <Route path="/privacy" element={<PrivacyPolicy />} />
             </Routes>
           </Main>
           <Footer />

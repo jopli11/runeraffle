@@ -219,6 +219,8 @@ export function Footer() {
             <NavLink href="/about">About</NavLink>
             <NavLink href="/fairness">Fairness</NavLink>
             <NavLink href="/support">Support</NavLink>
+            <NavLink href="/terms">Terms of Service</NavLink>
+            <NavLink href="/privacy">Privacy Policy</NavLink>
           </NavLinks>
           
           <DisclaimerSection>
