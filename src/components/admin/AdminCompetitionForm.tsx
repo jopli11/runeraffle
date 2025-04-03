@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from '@emotion/styled';
-import { createCompetition } from '../../services/firestore';
+import { createCompetition, getCompetition, updateCompetition } from '../../services/firestore';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/firestore';
 
@@ -170,6 +170,48 @@ export default function AdminCompetitionForm({ competitionId, onCancel, onSucces
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // Fetch competition data if editing an existing competition
+  useEffect(() => {
+    const fetchCompetitionData = async () => {
+      if (!competitionId) return;
+      
+      setIsLoading(true);
+      try {
+        const competition = await getCompetition(competitionId);
+        
+        if (competition) {
+          // Convert Firestore timestamp to date string for the form
+          const endsAtDate = competition.endsAt.toDate().toISOString().split('T')[0];
+          
+          setFormData({
+            title: competition.title || '',
+            description: competition.description || '',
+            prize: competition.prize || '',
+            prizeValue: competition.prizeValue || '',
+            imageUrl: competition.imageUrl || '',
+            difficulty: competition.difficulty || 'medium',
+            ticketPrice: competition.ticketPrice || 3,
+            totalTickets: competition.totalTickets || 500,
+            endsAt: endsAtDate,
+            status: competition.status || 'active',
+            triviaQuestion: competition.triviaQuestion || '',
+            triviaAnswer: competition.triviaAnswer || ''
+          });
+        } else {
+          setError('Competition not found');
+        }
+      } catch (err: any) {
+        console.error('Error fetching competition:', err);
+        setError(err.message || 'An error occurred while fetching the competition');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchCompetitionData();
+  }, [competitionId]);
   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -208,7 +250,7 @@ export default function AdminCompetitionForm({ competitionId, onCancel, onSucces
         throw new Error('End date must be in the future.');
       }
       
-      // Create the competition with the endDate as a proper Firestore Timestamp
+      // Prepare data object with correct types for Firestore
       const data = {
         ...formData,
         ticketPrice: Number(formData.ticketPrice),
@@ -218,19 +260,33 @@ export default function AdminCompetitionForm({ competitionId, onCancel, onSucces
         endsAt: firebase.firestore.Timestamp.fromDate(endDate)
       };
       
-      await createCompetition(data);
+      if (competitionId) {
+        // Update existing competition
+        await updateCompetition(competitionId, data);
+        alert('Competition updated successfully!');
+      } else {
+        // Create new competition
+        await createCompetition(data);
+        alert('Competition created successfully!');
+      }
       
-      // Success!
-      alert('Competition created successfully!');
       if (onSuccess) onSuccess();
-      onCancel();
+      else onCancel();
     } catch (err: any) {
-      console.error('Error creating competition:', err);
-      setError(err.message || 'An error occurred while creating the competition.');
+      console.error('Error saving competition:', err);
+      setError(err.message || 'An error occurred while saving the competition.');
     } finally {
       setIsSubmitting(false);
     }
   };
+  
+  if (isLoading) {
+    return (
+      <FormContainer>
+        <FormTitle>Loading competition data...</FormTitle>
+      </FormContainer>
+    );
+  }
   
   return (
     <FormContainer>
@@ -404,7 +460,10 @@ export default function AdminCompetitionForm({ competitionId, onCancel, onSucces
             Cancel
           </SecondaryButton>
           <PrimaryButton type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Creating...' : 'Create Competition'}
+            {isSubmitting 
+              ? competitionId ? 'Updating...' : 'Creating...' 
+              : competitionId ? 'Update Competition' : 'Create Competition'
+            }
           </PrimaryButton>
         </ButtonsContainer>
       </Form>

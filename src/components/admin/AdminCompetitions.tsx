@@ -189,8 +189,8 @@ export default function AdminCompetitions() {
   };
 
   const handleEditCompetition = (id: string) => {
-    // This would normally navigate to an edit page or open a modal
-    alert(`Edit competition ${id}`);
+    // Navigate to an edit form page for the competition
+    navigate(`/admin/edit-competition/${id}`);
   };
 
   const handleDeleteCompetition = async (id: string) => {

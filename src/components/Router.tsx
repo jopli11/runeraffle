@@ -54,6 +54,7 @@ export default function Router() {
               {/* Admin routes */}
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/support" element={<Navigate to="/admin?tab=support" replace />} />
+              <Route path="/admin/edit-competition/:id" element={<AdminDashboard />} />
               <Route path="/admin/competitions" element={<AdminDashboard />} />
               <Route path="/admin/users" element={<AdminDashboard />} />
               <Route path="/admin/winners" element={<AdminDashboard />} />

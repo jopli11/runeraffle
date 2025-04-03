@@ -9,7 +9,8 @@ import DatabaseSeeder from './DatabaseSeeder';
 import { CompetitionProcessor } from './CompetitionProcessor';
 import AdminSupportTickets from './AdminSupportTickets';
 import AdminAnalytics from './AdminAnalytics';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
+import { getCompetition, updateCompetition } from '../../services/firestore';
 
 // Styled components
 const Container = styled.div`
@@ -157,10 +158,12 @@ const ErrorContainer = styled.div`
 export default function AdminDashboard() {
   const { currentUser, isLoading, isAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState<'competitions' | 'users' | 'winners' | 'create' | 'seeder' | 'processor' | 'support' | 'analytics'>('competitions');
+  const [editCompetitionId, setEditCompetitionId] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
+  const { id } = useParams<{ id?: string }>();
 
-  // Extract query parameters from URL
+  // Extract query parameters from URL and check for competition ID
   useEffect(() => {
     // Parse query parameters
     const searchParams = new URLSearchParams(location.search);
@@ -172,13 +175,35 @@ export default function AdminDashboard() {
         tab === 'processor' || tab === 'analytics') {
       setActiveTab(tab);
     }
-  }, [location.search]);
+    
+    // Check if we're on the edit-competition route
+    if (location.pathname.includes('/admin/edit-competition/') && id) {
+      setEditCompetitionId(id);
+      setActiveTab('create'); // Set to create tab which will show the form
+    } else {
+      setEditCompetitionId(null);
+    }
+  }, [location.search, location.pathname, id]);
 
   useEffect(() => {
     if (!currentUser || !isAdmin) {
       navigate('/login');
     }
   }, [currentUser, isAdmin, navigate]);
+
+  const handleFormCancel = () => {
+    // If we were editing, go back to the competitions tab
+    if (editCompetitionId) {
+      navigate('/admin?tab=competitions');
+    } else {
+      setActiveTab('competitions');
+    }
+  };
+
+  const handleFormSuccess = () => {
+    // After successful form submission, navigate back to competitions
+    navigate('/admin?tab=competitions');
+  };
 
   // If loading or not logged in, show appropriate message
   if (isLoading) {
@@ -218,88 +243,98 @@ export default function AdminDashboard() {
         <PageDescription>Manage competitions, users, and system settings</PageDescription>
       </PageHeader>
 
-      <ActionButtonsContainer>
-        <PrimaryButton 
-          onClick={() => setActiveTab('create')}
-          disabled={activeTab === 'create'}
-        >
-          + New Competition
-        </PrimaryButton>
-        <SecondaryButton
-          onClick={() => setActiveTab('processor')}
-          disabled={activeTab === 'processor'}
-        >
-          Process Competitions
-        </SecondaryButton>
-        <SecondaryButton
-          onClick={() => setActiveTab('analytics')}
-          disabled={activeTab === 'analytics'}
-        >
-          Analytics
-        </SecondaryButton>
-        <SecondaryButton
-          onClick={() => setActiveTab('support')}
-          disabled={activeTab === 'support'}
-        >
-          Support Tickets
-        </SecondaryButton>
-        <SecondaryButton
-          onClick={() => setActiveTab('seeder')}
-          disabled={activeTab === 'seeder'}
-        >
-          Database Seeder
-        </SecondaryButton>
-      </ActionButtonsContainer>
+      {!editCompetitionId && (
+        <>
+          <ActionButtonsContainer>
+            <PrimaryButton 
+              onClick={() => setActiveTab('create')}
+              disabled={activeTab === 'create'}
+            >
+              + New Competition
+            </PrimaryButton>
+            <SecondaryButton
+              onClick={() => setActiveTab('processor')}
+              disabled={activeTab === 'processor'}
+            >
+              Process Competitions
+            </SecondaryButton>
+            <SecondaryButton
+              onClick={() => setActiveTab('analytics')}
+              disabled={activeTab === 'analytics'}
+            >
+              Analytics
+            </SecondaryButton>
+            <SecondaryButton
+              onClick={() => setActiveTab('support')}
+              disabled={activeTab === 'support'}
+            >
+              Support Tickets
+            </SecondaryButton>
+            <SecondaryButton
+              onClick={() => setActiveTab('seeder')}
+              disabled={activeTab === 'seeder'}
+            >
+              Database Seeder
+            </SecondaryButton>
+          </ActionButtonsContainer>
 
-      <TabsContainer>
-        <Tab 
-          active={activeTab === 'competitions'} 
-          onClick={() => setActiveTab('competitions')}
-        >
-          Competitions
-        </Tab>
-        <Tab 
-          active={activeTab === 'users'} 
-          onClick={() => setActiveTab('users')}
-        >
-          Users
-        </Tab>
-        <Tab 
-          active={activeTab === 'winners'} 
-          onClick={() => setActiveTab('winners')}
-        >
-          Past Winners
-        </Tab>
-        <Tab 
-          active={activeTab === 'analytics'} 
-          onClick={() => setActiveTab('analytics')}
-        >
-          Analytics
-        </Tab>
-        <Tab 
-          active={activeTab === 'processor'} 
-          onClick={() => setActiveTab('processor')}
-        >
-          Processor
-        </Tab>
-        <Tab 
-          active={activeTab === 'support'} 
-          onClick={() => setActiveTab('support')}
-        >
-          Support
-        </Tab>
-        <Tab 
-          active={activeTab === 'seeder'} 
-          onClick={() => setActiveTab('seeder')}
-        >
-          Seeder
-        </Tab>
-      </TabsContainer>
+          <TabsContainer>
+            <Tab 
+              active={activeTab === 'competitions'} 
+              onClick={() => setActiveTab('competitions')}
+            >
+              Competitions
+            </Tab>
+            <Tab 
+              active={activeTab === 'users'} 
+              onClick={() => setActiveTab('users')}
+            >
+              Users
+            </Tab>
+            <Tab 
+              active={activeTab === 'winners'} 
+              onClick={() => setActiveTab('winners')}
+            >
+              Past Winners
+            </Tab>
+            <Tab 
+              active={activeTab === 'analytics'} 
+              onClick={() => setActiveTab('analytics')}
+            >
+              Analytics
+            </Tab>
+            <Tab 
+              active={activeTab === 'processor'} 
+              onClick={() => setActiveTab('processor')}
+            >
+              Processor
+            </Tab>
+            <Tab 
+              active={activeTab === 'support'} 
+              onClick={() => setActiveTab('support')}
+            >
+              Support
+            </Tab>
+            <Tab 
+              active={activeTab === 'seeder'} 
+              onClick={() => setActiveTab('seeder')}
+            >
+              Seeder
+            </Tab>
+          </TabsContainer>
+        </>
+      )}
 
       {activeTab === 'competitions' && <AdminCompetitions />}
       {activeTab === 'users' && <AdminUsers />}
       {activeTab === 'winners' && <AdminWinners />}
-      {activeTab === 'create' && <AdminCompetitionForm onCancel={() => setActiveTab('competitions')} />}
+      {activeTab === 'create' && (
+        <AdminCompetitionForm 
+          competitionId={editCompetitionId || undefined} 
+          onCancel={handleFormCancel} 
+          onSuccess={handleFormSuccess}
+        />
+      )}
       {activeTab === 'processor' && <CompetitionProcessor />}
       {activeTab === 'support' && <AdminSupportTickets />}
       {activeTab === 'seeder' && <DatabaseSeeder />}
