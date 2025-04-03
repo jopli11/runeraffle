@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from '@emotion/styled';
-import { getCompetitions, deleteCompetition, updateCompetition } from '../../services/firestore';
+import { getCompetitions, deleteCompetition, updateCompetition, cancelCompetition } from '../../services/firestore';
 import type { Competition } from '../../services/firestore';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/firestore';
@@ -134,6 +134,29 @@ const CancelButton = styled(ActionButton)`
   &:hover {
     background-color: rgba(239, 68, 68, 0.2);
   }
+  
+  /* Add a title attribute for hover tooltip */
+  &:after {
+    content: attr(title);
+    position: absolute;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.5rem;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  
+  &:hover:after {
+    visibility: visible;
+    opacity: 1;
+  }
 `;
 
 const DeleteButton = styled(ActionButton)`
@@ -142,6 +165,29 @@ const DeleteButton = styled(ActionButton)`
   
   &:hover {
     background-color: rgba(239, 68, 68, 0.2);
+  }
+  
+  /* Add a title attribute for hover tooltip */
+  &:after {
+    content: attr(title);
+    position: absolute;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.5rem;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  
+  &:hover:after {
+    visibility: visible;
+    opacity: 1;
   }
 `;
 
@@ -207,13 +253,22 @@ export default function AdminCompetitions() {
   };
 
   const handleCancelCompetition = async (id: string) => {
-    if (window.confirm('Are you sure you want to cancel this competition?')) {
+    if (window.confirm('Are you sure you want to cancel this competition?\nNote: This keeps the competition in the system but marks it as cancelled.')) {
+      const shouldRefund = window.confirm('Do you want to automatically refund all purchased tickets for this competition?');
+      
       try {
-        await updateCompetition(id, { status: 'cancelled' });
+        await cancelCompetition(id, shouldRefund);
+        
+        // Update the UI to show the competition as cancelled
         setCompetitions(competitions.map(comp => 
           comp.id === id ? { ...comp, status: 'cancelled' } : comp
         ));
-        alert('Competition cancelled successfully');
+        
+        if (shouldRefund) {
+          alert('Competition cancelled and refund process initiated. Users will receive credits for purchased tickets.');
+        } else {
+          alert('Competition cancelled successfully. No refunds were processed.');
+        }
       } catch (error) {
         console.error('Error cancelling competition:', error);
         alert('Failed to cancel competition');
@@ -319,13 +374,19 @@ export default function AdminCompetitions() {
                       <CompleteButton onClick={() => handleCompleteCompetition(competition.id!)}>
                         Complete
                       </CompleteButton>
-                      <CancelButton onClick={() => handleCancelCompetition(competition.id!)}>
+                      <CancelButton 
+                        onClick={() => handleCancelCompetition(competition.id!)}
+                        title="Cancel marks competition as cancelled but keeps it in the system"
+                      >
                         Cancel
                       </CancelButton>
                     </>
                   )}
                   
-                  <DeleteButton onClick={() => handleDeleteCompetition(competition.id!)}>
+                  <DeleteButton 
+                    onClick={() => handleDeleteCompetition(competition.id!)}
+                    title="Delete permanently removes the competition from the database"
+                  >
                     Delete
                   </DeleteButton>
                 </ActionCellContainer>

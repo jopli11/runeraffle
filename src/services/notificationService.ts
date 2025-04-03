@@ -217,6 +217,23 @@ export const sendSystemNotification = async (
 };
 
 /**
+ * Alias for sendSystemNotification for better API consistency
+ */
+export const notifyUser = async (
+  userId: string,
+  title: string,
+  message: string,
+  type: 'system' | 'ticket_update' | 'credit_update' | 'competition_winner' | 'competition_ending' | 'ticket_purchase' = 'system'
+): Promise<string> => {
+  return await createNotification({
+    userId,
+    type,
+    title,
+    message
+  });
+};
+
+/**
  * Create a notification for a support ticket update
  */
 export const notifyTicketUpdate = async (

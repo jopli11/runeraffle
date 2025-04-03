@@ -40,6 +40,7 @@ export interface Ticket {
   purchasedAt: firebase.firestore.Timestamp;
   ticketNumber: number;
   isWinner: boolean;
+  refunded?: boolean;
 }
 
 export interface User {
@@ -154,12 +155,23 @@ export const completeCompetition = async (id: string, winner: Competition['winne
   });
 };
 
-export const cancelCompetition = async (id: string): Promise<void> => {
+export const cancelCompetition = async (id: string, autoRefund: boolean = false): Promise<void> => {
   const docRef = competitionsRef.doc(id);
   await docRef.update({
     status: 'cancelled',
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   });
+  
+  // If autoRefund is enabled, automatically refund all tickets
+  if (autoRefund) {
+    try {
+      await refundCancelledCompetitionTickets(id);
+    } catch (error) {
+      console.error(`Error processing automatic refunds for competition ${id}:`, error);
+      // We don't re-throw the error here to avoid preventing the competition cancellation
+      // if the refund process fails. The admin can manually run the refund process later.
+    }
+  }
 };
 
 // Ticket operations
@@ -677,4 +689,114 @@ export const getTicketMessages = async (ticketId: string): Promise<TicketMessage
 }> => {
   // Function implementation removed
 };
-*/ 
+*/
+
+// Add new function to refund users for cancelled competitions
+export const refundCancelledCompetitionTickets = async (competitionId: string): Promise<{success: boolean, refundedUsers: number, totalCreditsRefunded: number}> => {
+  try {
+    // Get all tickets for the competition
+    const tickets = await getCompetitionTickets(competitionId);
+    
+    // Get the competition to check if it's actually cancelled
+    const competition = await getCompetition(competitionId);
+    if (!competition) {
+      throw new Error(`Competition ${competitionId} not found`);
+    }
+    
+    if (competition.status !== 'cancelled') {
+      throw new Error(`Competition ${competitionId} is not cancelled, current status: ${competition.status}`);
+    }
+    
+    // Track statistics for reporting
+    let refundedUsers = 0;
+    let totalCreditsRefunded = 0;
+    
+    // Group tickets by user to avoid multiple updates to the same user
+    const ticketsByUser: Record<string, {tickets: Ticket[], totalRefund: number}> = {};
+    
+    // Calculate refunds needed for each user
+    for (const ticket of tickets) {
+      // Skip already refunded tickets
+      if (ticket.refunded) continue;
+      
+      if (!ticketsByUser[ticket.userId]) {
+        ticketsByUser[ticket.userId] = {
+          tickets: [],
+          totalRefund: 0
+        };
+      }
+      
+      ticketsByUser[ticket.userId].tickets.push(ticket);
+      ticketsByUser[ticket.userId].totalRefund += competition.ticketPrice;
+    }
+    
+    // Process refunds in a batch to minimize database operations
+    const batch = db.batch();
+    
+    // For each user, update their credits and mark their tickets as refunded
+    for (const userId in ticketsByUser) {
+      const { tickets, totalRefund } = ticketsByUser[userId];
+      
+      // Get current user data
+      try {
+        // Get user document (users are stored by email, so we need to query)
+        const userQuerySnapshot = await db.collection('users').where('uid', '==', userId).limit(1).get();
+        
+        if (userQuerySnapshot.empty) {
+          console.error(`User ${userId} not found, skipping refund`);
+          continue;
+        }
+        
+        const userDoc = userQuerySnapshot.docs[0];
+        const userData = userDoc.data() as User;
+        
+        // Update user credits
+        const newCredits = userData.credits + totalRefund;
+        batch.update(userDoc.ref, { 
+          credits: newCredits,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        // Mark all tickets as refunded
+        for (const ticket of tickets) {
+          if (ticket.id) {
+            batch.update(ticketsRef.doc(ticket.id), { 
+              refunded: true,
+              updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+          }
+        }
+        
+        refundedUsers++;
+        totalCreditsRefunded += totalRefund;
+        
+        // Create system notification for the user about the refund
+        try {
+          const { notifyUser } = await import('./notificationService');
+          await notifyUser(
+            userId,
+            'Refund Processed',
+            `Your ${tickets.length} ticket(s) for "${competition.title}" have been refunded (${totalRefund} credits).`,
+            'system'
+          );
+        } catch (error) {
+          console.error('Error sending refund notification:', error);
+        }
+      } catch (error) {
+        console.error(`Error processing refund for user ${userId}:`, error);
+      }
+    }
+    
+    // Commit all the refund operations at once
+    await batch.commit();
+    
+    return {
+      success: true,
+      refundedUsers,
+      totalCreditsRefunded
+    };
+  } catch (error) {
+    console.error(`Error refunding cancelled competition ${competitionId}:`, error);
+    throw error;
+  }
+}; 
