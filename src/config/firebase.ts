@@ -2,16 +2,8 @@ import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import 'firebase/compat/firestore';
 
-// Conditionally import firebase functions to avoid errors
+// Track our function import status - initially false
 let functionsImported = false;
-try {
-  // Try to import firebase functions
-  require('firebase/compat/functions');
-  functionsImported = true;
-  console.log('Firebase Functions imported successfully');
-} catch (error) {
-  console.warn('Failed to import Firebase Functions - will use fallback implementation');
-}
 
 // Access environment variables from both runtime and build time
 const getEnvVariable = (key: string): string => {
@@ -81,6 +73,7 @@ let auth: firebase.auth.Auth;
 let db: firebase.firestore.Firestore;
 let googleProvider: firebase.auth.GoogleAuthProvider;
 
+// Try to initialize Firebase
 try {
   // Initialize Firebase
   const app = firebase.initializeApp(firebaseConfig);
@@ -92,26 +85,40 @@ try {
   
   googleProvider = new firebase.auth.GoogleAuthProvider();
   
-  // Configure Firebase Functions to use emulator in development mode
-  // Only use emulator if explicitly enabled with an environment variable
-  const useEmulator = import.meta.env.MODE === 'development' && getEnvVariable('VITE_USE_FIREBASE_EMULATOR') === 'true';
+  // Dynamically import functions - this happens asynchronously
+  const importFunctions = async () => {
+    try {
+      await import('firebase/compat/functions');
+      functionsImported = true;
+      console.log('Firebase Functions imported successfully');
+      
+      // Configure Firebase Functions to use emulator in development mode
+      // Only use emulator if explicitly enabled with an environment variable
+      const useEmulator = import.meta.env.MODE === 'development' && getEnvVariable('VITE_USE_FIREBASE_EMULATOR') === 'true';
+      
+      // Now that functions are imported, we can use them
+      if (typeof firebase.functions === 'function') {
+        if (useEmulator) {
+          console.log('Using Firebase emulator for functions');
+          firebase.functions().useEmulator('localhost', 5001);
+        }
+        
+        // Set the default region for Firebase Functions to europe-west2 (London)
+        if (typeof firebase.app().functions === 'function') {
+          firebase.app().functions('europe-west2');
+        } else {
+          console.warn('firebase.app().functions is not available - region settings will be ignored');
+        }
+      } else {
+        console.warn('Firebase Functions not initialized correctly - functions will not work');
+      }
+    } catch (error) {
+      console.warn('Failed to import Firebase Functions - will use fallback implementation:', error);
+    }
+  };
   
-  // Make sure functions were imported and exist before trying to access them
-  if (functionsImported && typeof firebase.functions === 'function') {
-    if (useEmulator) {
-      console.log('Using Firebase emulator for functions');
-      firebase.functions().useEmulator('localhost', 5001);
-    }
-    
-    // Set the default region for Firebase Functions to europe-west2 (London)
-    if (typeof firebase.app().functions === 'function') {
-      firebase.app().functions('europe-west2');
-    } else {
-      console.warn('firebase.app().functions is not available - region settings will be ignored');
-    }
-  } else {
-    console.warn('Firebase Functions not available in this build - functions will not work');
-  }
+  // Start the async import process
+  importFunctions();
   
 } catch (error) {
   console.error("Error initializing Firebase:", error);

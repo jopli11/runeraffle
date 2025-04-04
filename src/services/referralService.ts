@@ -41,8 +41,11 @@ const getUserReferralsFn = createCallableFunction('getUserReferrals');
  */
 export const getOrCreateReferralCode = async (userId: string, userEmail: string): Promise<string> => {
   try {
-    // Call the Firebase function
-    const result = await generateReferralCodeFn({ userId, userEmail });
+    // Call the Firebase function - providing better error handling for the async nature
+    const result = await generateReferralCodeFn({ userId, userEmail }).catch(error => {
+      console.error('[REFERRAL] Error calling generateReferralCode function:', error);
+      throw error;
+    });
     
     // Extract the referral code from the result
     const { referralCode, isNew } = result;
@@ -117,8 +120,11 @@ export const processReferral = async (
   newUserEmail: string
 ): Promise<boolean> => {
   try {
-    // Call the Firebase function
-    const result = await processReferralFn({ referralCode, newUserId, newUserEmail });
+    // Call the Firebase function - providing better error handling for the async nature
+    const result = await processReferralFn({ referralCode, newUserId, newUserEmail }).catch(error => {
+      console.error('[REFERRAL] Error calling processReferral function:', error);
+      throw error;
+    });
     
     console.log('[REFERRAL] Processed referral through cloud function');
     return result.success;
@@ -245,8 +251,11 @@ export const claimReferralReward = async (
  */
 export const getUserReferrals = async (userId: string): Promise<any> => {
   try {
-    // Call the Firebase function
-    const result = await getUserReferralsFn({ userId });
+    // Call the Firebase function - providing better error handling for the async nature
+    const result = await getUserReferralsFn({ userId }).catch(error => {
+      console.error('[REFERRAL] Error calling getUserReferrals function:', error);
+      throw error;
+    });
     
     return result;
   } catch (error) {

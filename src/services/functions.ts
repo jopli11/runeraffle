@@ -18,11 +18,14 @@ type CloudFunction<T, R> = (data: T) => Promise<R>;
  * @returns A callable function that sends the data to the specified Cloud Function
  */
 export function createCallableFunction<T = any, R = any>(functionName: string): CloudFunction<T, R> {
-  try {
-    const functions = getFunctions();
-    const callable = functions.httpsCallable(functionName);
-    
-    return async (data: T): Promise<R> => {
+  // We'll lazily get the functions instance only when the function is called
+  // This gives time for the async import to complete
+  return async (data: T): Promise<R> => {
+    try {
+      // Get the functions instance at call time, not creation time
+      const functions = getFunctions();
+      const callable = functions.httpsCallable(functionName);
+      
       try {
         const result = await callable(data);
         return result.data as R;
@@ -30,15 +33,11 @@ export function createCallableFunction<T = any, R = any>(functionName: string): 
         console.error(`Error calling cloud function ${functionName}:`, error);
         throw error;
       }
-    };
-  } catch (error) {
-    console.error(`Failed to initialize cloud function ${functionName}:`, error);
-    
-    // Return a function that will reject with a helpful error message
-    return async () => {
+    } catch (error) {
+      console.error(`Failed to initialize cloud function ${functionName}:`, error);
       throw new Error(`Cloud function "${functionName}" is not available in this environment`);
-    };
-  }
+    }
+  };
 }
 
 // Examples of Cloud Functions you might use in your app
