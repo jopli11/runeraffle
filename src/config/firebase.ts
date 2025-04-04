@@ -2,52 +2,99 @@ import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import 'firebase/compat/firestore';
 
-// Add ENV to the Window interface
-declare global {
-  interface Window {
-    ENV?: Record<string, string>;
-  }
-}
-
 // Access environment variables from both runtime and build time
 const getEnvVariable = (key: string): string => {
-  // Check if we have runtime environment variables from server.js
+  // Debug environment details
+  if (typeof window !== 'undefined' && key === 'VITE_FIREBASE_API_KEY') {
+    console.log('Environment details:');
+    console.log('- Window ENV available:', !!window.ENV);
+    console.log('- import.meta.env keys:', Object.keys(import.meta.env));
+  }
+  
+  // Try window.ENV first (set by server.js)
   if (typeof window !== 'undefined' && window.ENV && window.ENV[key]) {
+    console.log(`Using runtime ENV for ${key}`);
     return window.ENV[key];
   }
-  // Fall back to Vite environment variables
-  return import.meta.env[key] || '';
+  
+  // Then try import.meta.env
+  const envValue = import.meta.env[key] || '';
+  if (envValue) {
+    console.log(`Using import.meta.env for ${key}`);
+  } else {
+    console.error(`Missing environment variable: ${key}`);
+  }
+  return envValue;
 };
 
+// Debug: log firebase initialization
+console.log("Initializing Firebase...");
+
 // Your web app's Firebase configuration
+const apiKey = getEnvVariable('VITE_FIREBASE_API_KEY');
+const authDomain = getEnvVariable('VITE_FIREBASE_AUTH_DOMAIN');
+const projectId = getEnvVariable('VITE_FIREBASE_PROJECT_ID');
+const storageBucket = getEnvVariable('VITE_FIREBASE_STORAGE_BUCKET');
+const messagingSenderId = getEnvVariable('VITE_FIREBASE_MESSAGING_SENDER_ID');
+const appId = getEnvVariable('VITE_FIREBASE_APP_ID');
+
+// Check if we have the required configuration
+const hasMissingConfig = !apiKey || !authDomain || !projectId || !storageBucket 
+  || !messagingSenderId || !appId;
+
+if (hasMissingConfig) {
+  console.error("Firebase configuration is incomplete. Check environment variables.");
+  console.error("Missing:", {
+    apiKey: !apiKey,
+    authDomain: !authDomain,
+    projectId: !projectId,
+    storageBucket: !storageBucket,
+    messagingSenderId: !messagingSenderId,
+    appId: !appId
+  });
+} else {
+  console.log("Firebase configuration loaded successfully.");
+}
+
 export const firebaseConfig = {
-  apiKey: getEnvVariable('VITE_FIREBASE_API_KEY'),
-  authDomain: getEnvVariable('VITE_FIREBASE_AUTH_DOMAIN'),
-  projectId: getEnvVariable('VITE_FIREBASE_PROJECT_ID'),
-  storageBucket: getEnvVariable('VITE_FIREBASE_STORAGE_BUCKET'),
-  messagingSenderId: getEnvVariable('VITE_FIREBASE_MESSAGING_SENDER_ID'),
-  appId: getEnvVariable('VITE_FIREBASE_APP_ID')
+  apiKey,
+  authDomain,
+  projectId,
+  storageBucket,
+  messagingSenderId,
+  appId
 };
 
 // Initialize Firebase
-if (!firebase.apps.length) {
-  firebase.initializeApp(firebaseConfig);
+let auth: firebase.auth.Auth;
+let db: firebase.firestore.Firestore;
+let googleProvider: firebase.auth.GoogleAuthProvider;
+
+try {
+  // Initialize Firebase
+  const app = firebase.initializeApp(firebaseConfig);
+  console.log("Firebase initialized successfully");
+  
+  // Initialize Firestore and Auth
+  db = firebase.firestore();
+  auth = firebase.auth();
+  
+  googleProvider = new firebase.auth.GoogleAuthProvider();
+  
+  // Configure Firebase Functions to use emulator in development mode
+  // Only use emulator if explicitly enabled with an environment variable
+  const useEmulator = import.meta.env.MODE === 'development' && getEnvVariable('VITE_USE_FIREBASE_EMULATOR') === 'true';
+  if (useEmulator) {
+    console.log('Using Firebase emulator for functions');
+    firebase.functions().useEmulator('localhost', 5001);
+  }
+  
+  // Set the default region for Firebase Functions to europe-west2 (London)
+  firebase.app().functions('europe-west2');
+} catch (error) {
+  console.error("Error initializing Firebase:", error);
+  throw error;
 }
-
-const auth = firebase.auth();
-const db = firebase.firestore();
-const googleProvider = new firebase.auth.GoogleAuthProvider();
-
-// Configure Firebase Functions to use emulator in development mode
-// Only use emulator if explicitly enabled with an environment variable
-const useEmulator = import.meta.env.MODE === 'development' && getEnvVariable('VITE_USE_FIREBASE_EMULATOR') === 'true';
-if (useEmulator) {
-  console.log('Using Firebase emulator for functions');
-  firebase.functions().useEmulator('localhost', 5001);
-}
-
-// Set the default region for Firebase Functions to europe-west2 (London)
-firebase.app().functions('europe-west2');
 
 // Authentication functions
 export const signInWithGoogle = async () => {
@@ -151,4 +198,5 @@ export const getUserCreationTime = () => {
   return user.metadata.creationTime;
 };
 
-export { auth, db }; 
+// Export Firebase instances at the end of the file
+export { auth, db, firebase }; 

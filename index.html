@@ -14,7 +14,23 @@
         <meta name="description" content="RuneRaffle - The premier platform for RuneScape raffles and competitions" />
         <title>RuneRaffle - Compete and Win RuneScape Prizes</title>
         <!-- Load environment variables before the app -->
+        <script>
+            // Debug loading sequence
+            console.log('HTML document loading started at:', new Date().toISOString());
+        </script>
         <script src="/env-config.js"></script>
+        <script>
+            // Verify that environment variables loaded correctly
+            window.addEventListener('DOMContentLoaded', function() {
+                console.log('DOM content loaded at:', new Date().toISOString());
+                if (window.ENV) {
+                    console.log('Environment variables loaded successfully');
+                    console.log('Available keys:', Object.keys(window.ENV));
+                } else {
+                    console.error('Failed to load environment variables');
+                }
+            });
+        </script>
     </head>
 
     <body>

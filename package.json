@@ -11,7 +11,7 @@
         "build": "tsc -p tsconfig.build.json && vite build",
         "start": "node server.js",
         "start:prod": "vite preview --port $PORT",
-        "heroku-postbuild": "npm run build",
+        "heroku-postbuild": "npm run build && cp index.html dist/ || echo 'Root index.html already in dist/'",
         "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
         "preview": "vite preview"
     },
