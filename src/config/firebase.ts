@@ -21,6 +21,17 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 const googleProvider = new firebase.auth.GoogleAuthProvider();
 
+// Configure Firebase Functions to use emulator in development mode
+// Only use emulator if explicitly enabled with an environment variable
+const useEmulator = process.env.NODE_ENV === 'development' && import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true';
+if (useEmulator) {
+  console.log('Using Firebase emulator for functions');
+  firebase.functions().useEmulator('localhost', 5001);
+}
+
+// Set the default region for Firebase Functions to europe-west2 (London)
+firebase.app().functions('europe-west2');
+
 // Authentication functions
 export const signInWithGoogle = async () => {
   try {

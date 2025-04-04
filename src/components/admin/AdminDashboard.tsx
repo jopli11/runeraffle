@@ -9,6 +9,7 @@ import DatabaseSeeder from './DatabaseSeeder';
 import { CompetitionProcessor } from './CompetitionProcessor';
 import AdminSupportTickets from './AdminSupportTickets';
 import AdminAnalytics from './AdminAnalytics';
+import TestFunctions from './TestFunctions';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { getCompetition, updateCompetition } from '../../services/firestore';
 
@@ -157,7 +158,7 @@ const ErrorContainer = styled.div`
 
 export default function AdminDashboard() {
   const { currentUser, isLoading, isAdmin } = useAuth();
-  const [activeTab, setActiveTab] = useState<'competitions' | 'users' | 'winners' | 'create' | 'seeder' | 'processor' | 'support' | 'analytics'>('competitions');
+  const [activeTab, setActiveTab] = useState<'competitions' | 'users' | 'winners' | 'create' | 'seeder' | 'processor' | 'support' | 'analytics' | 'functions'>('competitions');
   const [editCompetitionId, setEditCompetitionId] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
@@ -172,7 +173,7 @@ export default function AdminDashboard() {
     // If tab parameter exists and matches a valid tab, set it active
     if (tab === 'support' || tab === 'competitions' || tab === 'users' || 
         tab === 'winners' || tab === 'create' || tab === 'seeder' || 
-        tab === 'processor' || tab === 'analytics') {
+        tab === 'processor' || tab === 'analytics' || tab === 'functions') {
       setActiveTab(tab);
     }
     
@@ -276,6 +277,12 @@ export default function AdminDashboard() {
             >
               Database Seeder
             </SecondaryButton>
+            <SecondaryButton
+              onClick={() => setActiveTab('functions')}
+              disabled={activeTab === 'functions'}
+            >
+              Test Functions
+            </SecondaryButton>
           </ActionButtonsContainer>
 
           <TabsContainer>
@@ -321,6 +328,12 @@ export default function AdminDashboard() {
             >
               Seeder
             </Tab>
+            <Tab 
+              active={activeTab === 'functions'} 
+              onClick={() => setActiveTab('functions')}
+            >
+              Functions
+            </Tab>
           </TabsContainer>
         </>
       )}
@@ -339,6 +352,7 @@ export default function AdminDashboard() {
       {activeTab === 'support' && <AdminSupportTickets />}
       {activeTab === 'seeder' && <DatabaseSeeder />}
       {activeTab === 'analytics' && <AdminAnalytics />}
+      {activeTab === 'functions' && <TestFunctions />}
     </Container>
   );
 } 

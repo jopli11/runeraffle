@@ -13,8 +13,8 @@ export const sendEmail = async (
   data?: any
 ): Promise<boolean> => {
   try {
-    // Initialize the callable function
-    const sendEmailFn = firebase.functions().httpsCallable('sendEmail');
+    // Initialize the callable function with EU region
+    const sendEmailFn = firebase.app().functions('europe-west2').httpsCallable('sendEmail');
     
     // Call the function with the email data
     const result = await sendEmailFn({

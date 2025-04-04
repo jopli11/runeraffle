@@ -5,176 +5,191 @@ import { nanoid } from 'nanoid';
 // Create a Firestore reference
 const db = admin.firestore();
 
+// Define the region
+const region = 'europe-west2';
+
 // Length of the referral code
 const REFERRAL_CODE_LENGTH = 8;
 
 // Reward amount for referrals (in credits)
-const REFERRAL_REWARD_AMOUNT = 5;
+const REFERRAL_REWARD = 50;
+
+// Reward amount for being referred (in credits)
+const REFEREE_REWARD = 25;
 
 /**
  * Generate a unique referral code for a user
  * This is a callable function that users can invoke
  */
-export const generateReferralCode = functions.https.onCall(async (data, context) => {
-  // Check if the user is authenticated
-  if (!context.auth) {
-    throw new functions.https.HttpsError(
-      'unauthenticated',
-      'The function must be called while authenticated'
-    );
-  }
-  
-  const uid = context.auth.uid;
-  
-  try {
-    // Check if the user already has a referral code
-    const userDoc = await db.collection('users').doc(uid).get();
-    if (!userDoc.exists) {
+export const generateReferralCode = functions
+  .region(region)
+  .https.onCall(async (data, context) => {
+    // Check if the user is authenticated
+    if (!context.auth) {
       throw new functions.https.HttpsError(
-        'not-found',
-        'User not found'
+        'unauthenticated',
+        'The function must be called while authenticated'
       );
     }
     
-    const userData = userDoc.data();
+    const uid = context.auth.uid;
+    const userEmail = context.auth.token.email || '';
     
-    // If user already has a referral code, return it
-    if (userData && userData.referralCode) {
+    try {
+      // Check if the user already has a referral code
+      const referralsRef = db.collection('referrals');
+      const existingCodesQuery = await referralsRef.where('userId', '==', uid).limit(1).get();
+      
+      if (!existingCodesQuery.empty) {
+        // User already has a code, return it
+        const existingCode = existingCodesQuery.docs[0].data().code;
+        return { 
+          referralCode: existingCode,
+          isNew: false
+        };
+      }
+      
+      // Generate a new unique code
+      const code = nanoid(REFERRAL_CODE_LENGTH);
+      
+      // Create a new referral entry
+      await referralsRef.add({
+        code,
+        userId: uid,
+        userEmail,
+        referredUsers: [],
+        referralCount: 0,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      
       return { 
-        referralCode: userData.referralCode,
-        isNew: false
+        referralCode: code,
+        isNew: true
       };
+    } catch (error) {
+      console.error('Error generating referral code:', error);
+      throw new functions.https.HttpsError(
+        'internal',
+        'Error generating referral code'
+      );
     }
-    
-    // Generate a new unique referral code
-    let isUnique = false;
-    let referralCode = '';
-    
-    while (!isUnique) {
-      referralCode = nanoid(REFERRAL_CODE_LENGTH);
-      
-      // Check if the code is already in use
-      const existingRefs = await db.collection('users')
-        .where('referralCode', '==', referralCode)
-        .limit(1)
-        .get();
-      
-      isUnique = existingRefs.empty;
-    }
-    
-    // Save the referral code to the user's document
-    await db.collection('users').doc(uid).update({
-      referralCode,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
-    });
-    
-    return { 
-      referralCode,
-      isNew: true
-    };
-  } catch (error) {
-    console.error('Error generating referral code:', error);
-    throw new functions.https.HttpsError(
-      'internal',
-      'Error generating referral code'
-    );
-  }
-});
+  });
 
 /**
  * Process a referral when a new user signs up
  * This should be called once during user registration if they have a referral code
  */
-export const processReferral = functions.https.onCall(async (data, context) => {
-  // Check if the user is authenticated
-  if (!context.auth) {
-    throw new functions.https.HttpsError(
-      'unauthenticated',
-      'The function must be called while authenticated'
-    );
-  }
-  
-  const newUserId = context.auth.uid;
-  const { referralCode } = data;
-  
-  if (!referralCode) {
-    throw new functions.https.HttpsError(
-      'invalid-argument',
-      'Referral code is required'
-    );
-  }
-  
-  try {
-    // Find the referring user
-    const referringUserSnapshot = await db.collection('users')
-      .where('referralCode', '==', referralCode)
-      .limit(1)
-      .get();
-    
-    if (referringUserSnapshot.empty) {
+export const processReferral = functions
+  .region(region)
+  .https.onCall(async (data, context) => {
+    // Check if the user is authenticated
+    if (!context.auth) {
       throw new functions.https.HttpsError(
-        'not-found',
-        'Invalid referral code'
+        'unauthenticated',
+        'The function must be called while authenticated'
       );
     }
     
-    const referringUserDoc = referringUserSnapshot.docs[0];
-    const referringUserId = referringUserDoc.id;
+    const newUserId = context.auth.uid;
+    const newUserEmail = context.auth.token.email || '';
+    const { referralCode } = data;
     
-    // Make sure the user isn't referring themselves
-    if (referringUserId === newUserId) {
+    if (!referralCode) {
       throw new functions.https.HttpsError(
         'invalid-argument',
-        'You cannot refer yourself'
+        'Referral code is required'
       );
     }
     
-    // Check if the new user already has a referral processed
-    const newUserDoc = await db.collection('users').doc(newUserId).get();
-    const newUserData = newUserDoc.data();
-    
-    if (newUserData && newUserData.referredBy) {
+    try {
+      // Find the referral document
+      const referralsRef = db.collection('referrals');
+      const referralQuery = await referralsRef.where('code', '==', referralCode).limit(1).get();
+      
+      if (referralQuery.empty) {
+        throw new functions.https.HttpsError(
+          'not-found',
+          'Invalid referral code'
+        );
+      }
+      
+      const referralDoc = referralQuery.docs[0];
+      const referralData = referralDoc.data();
+      const referrerId = referralData.userId;
+      
+      // Make sure the user isn't referring themselves
+      if (referrerId === newUserId) {
+        throw new functions.https.HttpsError(
+          'invalid-argument',
+          'You cannot refer yourself'
+        );
+      }
+      
+      // Check if the new user already has a referral processed
+      const newUserDoc = await db.collection('users').doc(newUserId).get();
+      const newUserData = newUserDoc.data();
+      
+      if (newUserData && newUserData.referredBy) {
+        throw new functions.https.HttpsError(
+          'already-exists',
+          'You have already used a referral code'
+        );
+      }
+      
+      // Update the referral document with the new referred user
+      await referralDoc.ref.update({
+        referredUsers: admin.firestore.FieldValue.arrayUnion(newUserId),
+        referralCount: admin.firestore.FieldValue.increment(1),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      
+      // Create a pending reward
+      await db.collection('referralRewards').add({
+        referrerId,
+        referredUserId: newUserId,
+        referredUserEmail: newUserEmail,
+        creditAmount: REFERRAL_REWARD,
+        status: 'pending',
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      
+      // Update the new user's document with the referral info
+      await db.collection('users').doc(newUserId).update({
+        referredBy: referralCode,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      
+      // Give the new user initial credits for using a referral code
+      if (newUserEmail) {
+        const userRef = db.collection('users').doc(newUserEmail);
+        await userRef.update({
+          credits: admin.firestore.FieldValue.increment(REFEREE_REWARD),
+          referredBy: referralCode,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+      }
+      
+      return { 
+        success: true,
+        referralId: referralDoc.id
+      };
+    } catch (error) {
+      console.error('Error processing referral:', error);
       throw new functions.https.HttpsError(
-        'already-exists',
-        'You have already used a referral code'
+        'internal',
+        'Error processing referral'
       );
     }
-    
-    // Create a referral record
-    const referralId = await db.collection('referrals').add({
-      referringUserId,
-      referredUserId: newUserId,
-      status: 'pending', // Pending until the referred user makes a purchase
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      completedAt: null,
-      rewardClaimed: false
-    });
-    
-    // Update the new user's document with the referral info
-    await db.collection('users').doc(newUserId).update({
-      referredBy: referringUserId,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
-    });
-    
-    return { 
-      success: true,
-      referralId: referralId.id
-    };
-  } catch (error) {
-    console.error('Error processing referral:', error);
-    throw new functions.https.HttpsError(
-      'internal',
-      'Error processing referral'
-    );
-  }
-});
+  });
 
 /**
  * Complete a referral and issue rewards when a referred user makes their first purchase
  * This is triggered by Firestore write to tickets collection
  */
-export const completeReferral = functions.firestore
+export const completeReferral = functions
+  .region(region)
+  .firestore
   .document('tickets/{ticketId}')
   .onCreate(async (snapshot, context) => {
     const ticketData = snapshot.data();
@@ -219,14 +234,14 @@ export const completeReferral = functions.firestore
       
       // Award credits to the referring user
       await db.collection('users').doc(referringUserId).update({
-        credits: admin.firestore.FieldValue.increment(REFERRAL_REWARD_AMOUNT),
+        credits: admin.firestore.FieldValue.increment(REFERRAL_REWARD),
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
       });
       
       // Create credit transaction record
       await db.collection('creditTransactions').add({
         userId: referringUserId,
-        amount: REFERRAL_REWARD_AMOUNT,
+        amount: REFERRAL_REWARD,
         type: 'referral_reward',
         description: `Referral reward for user ${userId}`,
         referralId: referralDoc.id,
@@ -245,58 +260,60 @@ export const completeReferral = functions.firestore
  * Get a user's referrals (who they've referred)
  * This is a callable function for users to check their referrals
  */
-export const getUserReferrals = functions.https.onCall(async (data, context) => {
-  // Check if the user is authenticated
-  if (!context.auth) {
-    throw new functions.https.HttpsError(
-      'unauthenticated',
-      'The function must be called while authenticated'
-    );
-  }
-  
-  const uid = context.auth.uid;
-  
-  try {
-    // Get all referrals where this user is the referrer
-    const referralsSnapshot = await db.collection('referrals')
-      .where('referringUserId', '==', uid)
-      .orderBy('createdAt', 'desc')
-      .get();
+export const getUserReferrals = functions
+  .region(region)
+  .https.onCall(async (data, context) => {
+    // Check if the user is authenticated
+    if (!context.auth) {
+      throw new functions.https.HttpsError(
+        'unauthenticated',
+        'The function must be called while authenticated'
+      );
+    }
     
-    // Transform the data for the client
-    const referrals = await Promise.all(referralsSnapshot.docs.map(async (doc) => {
-      const referralData = doc.data();
+    const uid = context.auth.uid;
+    
+    try {
+      // Get all referrals where this user is the referrer
+      const referralsSnapshot = await db.collection('referrals')
+        .where('referringUserId', '==', uid)
+        .orderBy('createdAt', 'desc')
+        .get();
       
-      // Get the referred user's display name
-      const referredUserDoc = await db.collection('users').doc(referralData.referredUserId).get();
-      const referredUserData = referredUserDoc.data();
+      // Transform the data for the client
+      const referrals = await Promise.all(referralsSnapshot.docs.map(async (doc) => {
+        const referralData = doc.data();
+        
+        // Get the referred user's display name
+        const referredUserDoc = await db.collection('users').doc(referralData.referredUserId).get();
+        const referredUserData = referredUserDoc.data();
+        
+        return {
+          id: doc.id,
+          referredUserId: referralData.referredUserId,
+          referredUserName: referredUserData?.displayName || 'Unknown User',
+          status: referralData.status,
+          createdAt: referralData.createdAt?.toDate().toISOString() || null,
+          completedAt: referralData.completedAt?.toDate().toISOString() || null,
+          rewardClaimed: referralData.rewardClaimed
+        };
+      }));
       
-      return {
-        id: doc.id,
-        referredUserId: referralData.referredUserId,
-        referredUserName: referredUserData?.displayName || 'Unknown User',
-        status: referralData.status,
-        createdAt: referralData.createdAt?.toDate().toISOString() || null,
-        completedAt: referralData.completedAt?.toDate().toISOString() || null,
-        rewardClaimed: referralData.rewardClaimed
+      // Get the user's referral code
+      const userDoc = await db.collection('users').doc(uid).get();
+      const userData = userDoc.data();
+      
+      return { 
+        referrals,
+        referralCode: userData?.referralCode || null,
+        totalReferrals: referrals.length,
+        completedReferrals: referrals.filter(r => r.status === 'completed').length
       };
-    }));
-    
-    // Get the user's referral code
-    const userDoc = await db.collection('users').doc(uid).get();
-    const userData = userDoc.data();
-    
-    return { 
-      referrals,
-      referralCode: userData?.referralCode || null,
-      totalReferrals: referrals.length,
-      completedReferrals: referrals.filter(r => r.status === 'completed').length
-    };
-  } catch (error) {
-    console.error('Error getting user referrals:', error);
-    throw new functions.https.HttpsError(
-      'internal',
-      'Error getting user referrals'
-    );
-  }
-}); 
+    } catch (error) {
+      console.error('Error getting user referrals:', error);
+      throw new functions.https.HttpsError(
+        'internal',
+        'Error getting user referrals'
+      );
+    }
+  }); 

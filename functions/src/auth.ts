@@ -4,155 +4,196 @@ import * as admin from 'firebase-admin';
 // Create a Firestore reference
 const db = admin.firestore();
 
+// Define the region
+const region = 'europe-west2';
+
 /**
  * Triggered when a user is created in Firebase Auth
  * Creates a user document in Firestore
  */
-export const createUserDocument = functions.auth.user().onCreate(async (user) => {
-  const { uid, email, displayName, photoURL } = user;
-  
-  try {
-    // Create a user document in Firestore
-    await db.collection('users').doc(uid).set({
-      email,
-      displayName: displayName || email?.split('@')[0] || 'Anonymous Player',
-      photoURL: photoURL || null,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      role: 'user',
-      isVerified: false,
-      ticketCount: 0,
-      winCount: 0,
-      referralCode: null,
-      referredBy: null,
-      credits: 0
-    });
-
-    console.log(`User document created for: ${uid}`);
-    return null;
-  } catch (error) {
-    console.error('Error creating user document:', error);
-    return null;
-  }
-});
+export const createUserDocument = functions
+  .region(region)
+  .auth.user()
+  .onCreate(async (user) => {
+    const { uid, email, displayName, photoURL } = user;
+    
+    try {
+      const userRef = db.collection('users').doc(email || uid);
+      
+      // Check if user document already exists
+      const doc = await userRef.get();
+      if (!doc.exists) {
+        // Create a new user document
+        const userData = {
+          uid,
+          email: email || '',
+          displayName: displayName || email || 'Anonymous User',
+          photoURL: photoURL || '',
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          credits: 100, // Default initial credits
+          isAdmin: false, // Default is not admin
+        };
+        
+        await userRef.set(userData);
+        console.log(`Created user document for ${email || uid}`);
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error creating user document:', error);
+      return null;
+    }
+  });
 
 /**
  * Triggered when a user is deleted from Firebase Auth
  * Cleans up user data from Firestore
  */
-export const cleanupUserData = functions.auth.user().onDelete(async (user) => {
-  const { uid } = user;
-  
-  try {
-    // Delete user document
-    await db.collection('users').doc(uid).delete();
+export const cleanupUserData = functions
+  .region(region)
+  .auth.user()
+  .onDelete(async (user) => {
+    const { uid, email } = user;
     
-    // Delete user's tickets
-    const ticketsSnapshot = await db.collection('tickets').where('userId', '==', uid).get();
-    const batch = db.batch();
-    
-    ticketsSnapshot.docs.forEach((doc) => {
-      batch.delete(doc.ref);
-    });
-    
-    await batch.commit();
-    
-    console.log(`User data cleaned up for: ${uid}`);
-    return null;
-  } catch (error) {
-    console.error('Error cleaning up user data:', error);
-    return null;
-  }
-});
+    try {
+      // Delete user document
+      if (email) {
+        await db.collection('users').doc(email).delete();
+      }
+      
+      // Delete user tickets
+      const ticketsSnapshot = await db.collection('tickets').where('userId', '==', uid).get();
+      
+      const batch = db.batch();
+      ticketsSnapshot.docs.forEach((doc) => {
+        batch.delete(doc.ref);
+      });
+      
+      // Commit the batch delete
+      if (ticketsSnapshot.docs.length > 0) {
+        await batch.commit();
+      }
+      
+      console.log(`Cleaned up data for user ${email || uid}`);
+      return null;
+    } catch (error) {
+      console.error('Error cleaning up user data:', error);
+      return null;
+    }
+  });
 
 /**
  * Function to update a user's role
  * Can only be called by an admin
  */
-export const updateUserRole = functions.https.onCall(async (data, context) => {
-  // Check if the user is authenticated
-  if (!context.auth) {
-    throw new functions.https.HttpsError(
-      'unauthenticated',
-      'The function must be called while authenticated'
-    );
-  }
-  
-  const callerUid = context.auth.uid;
-  
-  try {
-    // Check if the caller is an admin
-    const adminDoc = await db.collection('users').doc(callerUid).get();
-    const adminData = adminDoc.data();
+export const updateUserRole = functions
+  .region(region)
+  .https.onCall(async (data, context) => {
+    // Verify the caller is authenticated
+    if (!context.auth) {
+      throw new functions.https.HttpsError(
+        'unauthenticated',
+        'The function must be called while authenticated.'
+      );
+    }
     
-    if (!adminDoc.exists || !adminData || adminData.role !== 'admin') {
+    // Verify the caller is an admin
+    const callerEmail = context.auth.token.email || '';
+    const callerDoc = await db.collection('users').doc(callerEmail).get();
+    
+    if (!callerDoc.exists || !callerDoc.data()?.isAdmin) {
       throw new functions.https.HttpsError(
         'permission-denied',
-        'Only admins can update user roles'
+        'Only admins can update user roles.'
       );
     }
     
-    const { userId, newRole } = data;
+    const { email, isAdmin } = data;
     
-    if (!userId || !newRole) {
+    if (!email) {
       throw new functions.https.HttpsError(
         'invalid-argument',
-        'Both userId and newRole must be provided'
+        'The function must be called with an email identifier.'
       );
     }
     
-    // Ensure the role is valid
-    if (!['user', 'admin', 'moderator'].includes(newRole)) {
+    try {
+      // Update the user's admin status
+      await db.collection('users').doc(email).update({
+        isAdmin: !!isAdmin,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error updating user role:', error);
       throw new functions.https.HttpsError(
-        'invalid-argument',
-        'Role must be one of: user, admin, moderator'
+        'internal',
+        'Error updating user role.'
       );
     }
-    
-    // Update the user's role
-    await db.collection('users').doc(userId).update({
-      role: newRole,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
-    });
-    
-    return { success: true };
-  } catch (error) {
-    console.error('Error updating user role:', error);
-    throw new functions.https.HttpsError(
-      'internal',
-      'Error updating user role'
-    );
-  }
-});
+  });
 
 /**
  * Function to verify a user's email
  * Typically called after clicking a verification link
  */
-export const verifyUserEmail = functions.https.onCall(async (data, context) => {
-  // Check if the user is authenticated
-  if (!context.auth) {
-    throw new functions.https.HttpsError(
-      'unauthenticated',
-      'The function must be called while authenticated'
-    );
-  }
-  
-  const uid = context.auth.uid;
-  
-  try {
-    // Update the user's verification status
-    await db.collection('users').doc(uid).update({
-      isVerified: true,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
-    });
+export const verifyUserEmail = functions
+  .region(region)
+  .https.onCall(async (data, context) => {
+    // Verify the caller is authenticated
+    if (!context.auth) {
+      throw new functions.https.HttpsError(
+        'unauthenticated',
+        'The function must be called while authenticated.'
+      );
+    }
     
-    return { success: true };
-  } catch (error) {
-    console.error('Error verifying user email:', error);
-    throw new functions.https.HttpsError(
-      'internal',
-      'Error verifying user email'
-    );
-  }
-}); 
+    const { email } = data;
+    
+    if (!email) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'The function must be called with an email to verify.'
+      );
+    }
+    
+    try {
+      // Check if user exists in Firestore
+      const userDoc = await db.collection('users').doc(email).get();
+      
+      if (!userDoc.exists) {
+        return { exists: false, verified: false };
+      }
+      
+      // Check if the email belongs to the current user
+      const userData = userDoc.data();
+      const isCurrentUser = context.auth.token.email === email;
+      
+      // Only allow the user themselves or an admin to verify an email
+      if (!isCurrentUser && (!userData?.isAdmin || !context.auth.token.email)) {
+        throw new functions.https.HttpsError(
+          'permission-denied',
+          'You do not have permission to verify this email.'
+        );
+      }
+      
+      return { 
+        exists: true, 
+        verified: true,
+        userData: {
+          displayName: userData?.displayName,
+          credits: userData?.credits,
+          createdAt: userData?.createdAt,
+          isAdmin: userData?.isAdmin
+        }
+      };
+    } catch (error) {
+      console.error('Error verifying user email:', error);
+      throw new functions.https.HttpsError(
+        'internal',
+        'Error verifying user email.'
+      );
+    }
+  }); 
