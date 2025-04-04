@@ -23,7 +23,7 @@ const googleProvider = new firebase.auth.GoogleAuthProvider();
 
 // Configure Firebase Functions to use emulator in development mode
 // Only use emulator if explicitly enabled with an environment variable
-const useEmulator = process.env.NODE_ENV === 'development' && import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true';
+const useEmulator = import.meta.env.MODE === 'development' && import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true';
 if (useEmulator) {
   console.log('Using Firebase emulator for functions');
   firebase.functions().useEmulator('localhost', 5001);
