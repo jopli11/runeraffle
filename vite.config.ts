@@ -21,4 +21,13 @@ export default defineConfig({
     port: parseInt(process.env.PORT || '5173'),
     host: true,
   },
+  build: {
+    outDir: 'dist',
+    emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, 'index.html'),
+      },
+    },
+  },
 }) 

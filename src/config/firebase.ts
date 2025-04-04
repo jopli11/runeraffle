@@ -2,14 +2,31 @@ import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import 'firebase/compat/firestore';
 
+// Add ENV to the Window interface
+declare global {
+  interface Window {
+    ENV?: Record<string, string>;
+  }
+}
+
+// Access environment variables from both runtime and build time
+const getEnvVariable = (key: string): string => {
+  // Check if we have runtime environment variables from server.js
+  if (typeof window !== 'undefined' && window.ENV && window.ENV[key]) {
+    return window.ENV[key];
+  }
+  // Fall back to Vite environment variables
+  return import.meta.env[key] || '';
+};
+
 // Your web app's Firebase configuration
 export const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID
+  apiKey: getEnvVariable('VITE_FIREBASE_API_KEY'),
+  authDomain: getEnvVariable('VITE_FIREBASE_AUTH_DOMAIN'),
+  projectId: getEnvVariable('VITE_FIREBASE_PROJECT_ID'),
+  storageBucket: getEnvVariable('VITE_FIREBASE_STORAGE_BUCKET'),
+  messagingSenderId: getEnvVariable('VITE_FIREBASE_MESSAGING_SENDER_ID'),
+  appId: getEnvVariable('VITE_FIREBASE_APP_ID')
 };
 
 // Initialize Firebase
@@ -23,7 +40,7 @@ const googleProvider = new firebase.auth.GoogleAuthProvider();
 
 // Configure Firebase Functions to use emulator in development mode
 // Only use emulator if explicitly enabled with an environment variable
-const useEmulator = import.meta.env.MODE === 'development' && import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true';
+const useEmulator = import.meta.env.MODE === 'development' && getEnvVariable('VITE_USE_FIREBASE_EMULATOR') === 'true';
 if (useEmulator) {
   console.log('Using Firebase emulator for functions');
   firebase.functions().useEmulator('localhost', 5001);
