@@ -32,4 +32,6 @@ export * from './email';
 // Export auth functions
 export * from './auth';
 // Export referral functions
-export * from './referrals'; 
+export * from './referrals';
+// Export competition functions
+export * from './competitions'; 

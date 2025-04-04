@@ -31,6 +31,7 @@ export interface Competition {
   winningTicket?: number;
   triviaQuestion?: string;
   triviaAnswer?: string;
+  markedEndingSoon?: boolean;
 }
 
 export interface Ticket {
@@ -118,6 +119,7 @@ export const createCompetition = async (competition: Omit<Competition, 'id' | 'c
   const newCompetition = {
     ...competition,
     ticketsSold: 0,
+    markedEndingSoon: false,
     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
     // Set default values for trivia question/answer if they're missing
