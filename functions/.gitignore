@@ -1,0 +1,24 @@
+# Compiled JavaScript files
+lib/
+
+# TypeScript v1 declaration files
+typings/
+
+# Node.js dependency directory
+node_modules/
+
+# npm debug log
+npm-debug.log
+
+# Local environment variables
+.env
+
+# Coverage reports
+coverage/
+
+# Visual Studio Code settings
+.vscode/
+
+# Firebase cache and logs
+.firebase/
+*.log 

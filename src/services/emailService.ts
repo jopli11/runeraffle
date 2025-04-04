@@ -3,8 +3,7 @@ import 'firebase/compat/functions';
 
 /**
  * Send an email to a user
- * Note: This would normally use Firebase Cloud Functions to send emails
- * For now, we'll simulate this process with console logs
+ * Uses Firebase Cloud Functions to send emails securely
  */
 export const sendEmail = async (
   to: string,
@@ -13,13 +12,31 @@ export const sendEmail = async (
   templateId?: string,
   data?: any
 ): Promise<boolean> => {
-  // In a real application, this would call a Cloud Function to send the email
-  console.log(`[EMAIL SERVICE] Sending email to ${to}`);
-  console.log(`[EMAIL SERVICE] Subject: ${subject}`);
-  console.log(`[EMAIL SERVICE] Body: ${body}`);
-  
-  // Simulating a successful email send
-  return true;
+  try {
+    // Initialize the callable function
+    const sendEmailFn = firebase.functions().httpsCallable('sendEmail');
+    
+    // Call the function with the email data
+    const result = await sendEmailFn({
+      to,
+      subject,
+      html: body,
+      template: templateId,
+      data
+    });
+    
+    console.log('[EMAIL SERVICE] Email sent successfully via cloud function');
+    return true;
+  } catch (error) {
+    console.error('[EMAIL SERVICE] Error sending email:', error);
+    
+    // Fallback to console log for development environments
+    console.log(`[EMAIL SERVICE] Fallback: Sending email to ${to}`);
+    console.log(`[EMAIL SERVICE] Subject: ${subject}`);
+    console.log(`[EMAIL SERVICE] Body: ${body}`);
+    
+    return false;
+  }
 };
 
 /**
@@ -31,18 +48,14 @@ export const sendWelcomeEmail = async (
 ): Promise<boolean> => {
   const subject = 'Welcome to RuneRaffle!';
   const body = `
-    Hello ${displayName || 'there'},
-    
-    Welcome to RuneRaffle, the premier place for RuneScape raffles!
-    
-    Get started by browsing our active competitions and purchasing tickets.
-    
-    Good luck!
-    
-    The RuneRaffle Team
+    <h1>Welcome to RuneRaffle, ${displayName || 'there'}!</h1>
+    <p>Thank you for joining RuneRaffle, the premier place for RuneScape raffles!</p>
+    <p>Get started by browsing our active competitions and purchasing tickets.</p>
+    <p>Good luck!</p>
+    <p>The RuneRaffle Team</p>
   `;
   
-  return sendEmail(email, subject, body, 'welcome_email', { displayName });
+  return sendEmail(email, subject, body, 'welcome', { displayName });
 };
 
 /**
@@ -59,21 +72,19 @@ export const sendTicketPurchaseEmail = async (
 ): Promise<boolean> => {
   const subject = `Ticket Purchase Confirmation - ${competitionTitle}`;
   const body = `
-    Hello ${displayName},
-    
-    Thank you for purchasing a ticket for the "${competitionTitle}" competition!
-    
-    Ticket Details:
-    - Ticket Number: #${ticketNumber}
-    - Purchase Date: ${purchaseDate.toLocaleDateString()}
-    - Competition Ends: ${competitionEndsAt.toLocaleDateString()}
-    
-    You can view the competition details and track your entry at:
-    ${window.location.origin}/competition/${competitionId}
-    
-    Good luck!
-    
-    The RuneRaffle Team
+    <h1>Ticket Purchase Confirmation</h1>
+    <p>Hello ${displayName},</p>
+    <p>Thank you for purchasing a ticket for the "${competitionTitle}" competition!</p>
+    <h2>Ticket Details:</h2>
+    <ul>
+      <li>Ticket Number: #${ticketNumber}</li>
+      <li>Purchase Date: ${purchaseDate.toLocaleDateString()}</li>
+      <li>Competition Ends: ${competitionEndsAt.toLocaleDateString()}</li>
+    </ul>
+    <p>You can view the competition details and track your entry at:<br/>
+    <a href="${window.location.origin}/competition/${competitionId}">${window.location.origin}/competition/${competitionId}</a></p>
+    <p>Good luck!</p>
+    <p>The RuneRaffle Team</p>
   `;
   
   return sendEmail(email, subject, body, 'ticket_purchase', {
@@ -99,22 +110,19 @@ export const sendWinnerEmail = async (
 ): Promise<boolean> => {
   const subject = `Congratulations! You've Won - ${competitionTitle}`;
   const body = `
-    Hello ${displayName},
-    
-    CONGRATULATIONS! You're a winner in the "${competitionTitle}" competition!
-    
-    Prize Details:
-    - Prize: ${prize}
-    - Value: ${prizeValue}
-    
-    You can verify the draw results at:
-    ${window.location.origin}/verification/${competitionId}
-    
-    Our team will contact you shortly to arrange the delivery of your prize.
-    
-    Best regards,
-    
-    The RuneRaffle Team
+    <h1>Congratulations! You're a Winner!</h1>
+    <p>Hello ${displayName},</p>
+    <p>CONGRATULATIONS! You're a winner in the "${competitionTitle}" competition!</p>
+    <h2>Prize Details:</h2>
+    <ul>
+      <li>Prize: ${prize}</li>
+      <li>Value: ${prizeValue}</li>
+    </ul>
+    <p>You can verify the draw results at:<br/>
+    <a href="${window.location.origin}/verification/${competitionId}">${window.location.origin}/verification/${competitionId}</a></p>
+    <p>Our team will contact you shortly to arrange the delivery of your prize.</p>
+    <p>Best regards,</p>
+    <p>The RuneRaffle Team</p>
   `;
   
   return sendEmail(email, subject, body, 'winner_notification', {
@@ -138,16 +146,13 @@ export const sendCompetitionEndingSoonEmail = async (
 ): Promise<boolean> => {
   const subject = `Competition Ending Soon - ${competitionTitle}`;
   const body = `
-    Hello ${displayName},
-    
-    The "${competitionTitle}" competition is ending soon! Only ${hoursRemaining} hours remaining.
-    
-    Don't miss your chance to win! Purchase additional tickets now:
-    ${window.location.origin}/competition/${competitionId}
-    
-    Good luck!
-    
-    The RuneRaffle Team
+    <h1>Competition Ending Soon!</h1>
+    <p>Hello ${displayName},</p>
+    <p>The "${competitionTitle}" competition is ending soon! Only ${hoursRemaining} hours remaining.</p>
+    <p>Don't miss your chance to win! Purchase additional tickets now:<br/>
+    <a href="${window.location.origin}/competition/${competitionId}">${window.location.origin}/competition/${competitionId}</a></p>
+    <p>Good luck!</p>
+    <p>The RuneRaffle Team</p>
   `;
   
   return sendEmail(email, subject, body, 'competition_ending', {
@@ -158,33 +163,36 @@ export const sendCompetitionEndingSoonEmail = async (
   });
 };
 
-// Add this function to send emails to users who have successfully earned referral rewards
+// Send emails to users who have successfully earned referral rewards
 export const sendReferralRewardEmail = async (
   email: string,
   displayName: string,
   creditAmount: number
-): Promise<void> => {
+): Promise<boolean> => {
   try {
-    console.log(`[EMAIL] Sending referral reward email to ${email}...`);
+    const subject = 'Referral Reward Earned!';
+    const body = `
+      <h1>Referral Reward Earned!</h1>
+      <p>Hello ${displayName},</p>
+      <p>Great news! One of your referred friends has made their first purchase, and you've earned a reward!</p>
+      <h2>Reward Details:</h2>
+      <ul>
+        <li>Credits Added: ${creditAmount}</li>
+        <li>Date: ${new Date().toLocaleDateString()}</li>
+      </ul>
+      <p>Your credits have been automatically added to your account and are ready to use!</p>
+      <p>Keep referring friends to earn more rewards!</p>
+      <p>The RuneRaffle Team</p>
+    `;
     
-    const payload = {
-      to: email,
-      template: {
-        name: 'referral-reward',
-        data: {
-          displayName,
-          creditAmount,
-          date: new Date().toLocaleDateString(),
-          loginUrl: `${window.location.origin}/login`
-        }
-      }
-    };
-    
-    // In a real implementation, this would call an API endpoint
-    console.log(`[EMAIL] Referral reward email payload:`, payload);
-    console.log(`[EMAIL] Referral reward email sent to ${email} successfully!`);
-    
+    return sendEmail(email, subject, body, 'referral-reward', {
+      displayName,
+      creditAmount,
+      date: new Date().toLocaleDateString(),
+      loginUrl: `${window.location.origin}/login`
+    });
   } catch (error) {
     console.error('Error sending referral reward email:', error);
+    return false;
   }
 }; 

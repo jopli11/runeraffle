@@ -1,0 +1,25 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle with light blue from your app -->
+  <circle cx="256" cy="256" r="250" fill="#60A5FA" />
+  
+  <!-- First R - White -->
+  <path d="M150 120
+           h80 q40 0 60 30 q20 30 0 60 q-20 30 -60 30 h-30
+           l60 110 h-50 l-60 -110 v110 h-40 z
+           M190 200
+           h30 q10 0 15 -10 q5 -10 0 -20 q-5 -10 -15 -10 h-30 z" 
+        fill="white" />
+  
+  <!-- Second R - White with darker blue accents -->
+  <path d="M270 120
+           h80 q40 0 60 30 q20 30 0 60 q-20 30 -60 30 h-30
+           l60 110 h-50 l-60 -110 v110 h-40 z
+           M310 200
+           h30 q10 0 15 -10 q5 -10 0 -20 q-5 -10 -15 -10 h-30 z" 
+        fill="white" />
+  
+  <!-- Darker blue accent for second R -->
+  <path d="M310 200
+           h30 q10 0 15 -10 q5 -10 0 -20 q-5 -10 -15 -10 h-30 z"
+        fill="#1E40AF" />
+</svg>
