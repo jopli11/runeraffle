@@ -4,6 +4,7 @@ import 'firebase/compat/functions';
 import { db } from '../config/firebase';
 import { updateUserCredits } from './firestore';
 import { sendReferralRewardEmail } from './emailService';
+import { createCallableFunction } from './functions';
 
 // Types 
 export interface Referral {
@@ -29,6 +30,11 @@ export interface ReferralReward {
 export const REFERRAL_CREDIT_REWARD = 50; // Credits rewarded for each successful referral
 export const REFEREE_CREDIT_REWARD = 25; // Credits given to the person who was referred
 
+// Create callable functions using our safe wrapper
+const generateReferralCodeFn = createCallableFunction('generateReferralCode');
+const processReferralFn = createCallableFunction('processReferral');
+const getUserReferralsFn = createCallableFunction('getUserReferrals');
+
 /**
  * Generate a unique referral code for the current user
  * Uses Firebase Cloud Functions for secure generation
@@ -36,11 +42,10 @@ export const REFEREE_CREDIT_REWARD = 25; // Credits given to the person who was 
 export const getOrCreateReferralCode = async (userId: string, userEmail: string): Promise<string> => {
   try {
     // Call the Firebase function
-    const generateReferralCodeFn = firebase.functions().httpsCallable('generateReferralCode');
-    const result = await generateReferralCodeFn();
+    const result = await generateReferralCodeFn({ userId, userEmail });
     
     // Extract the referral code from the result
-    const { referralCode, isNew } = result.data;
+    const { referralCode, isNew } = result;
     console.log(`[REFERRAL] ${isNew ? 'Generated' : 'Retrieved'} referral code: ${referralCode}`);
     
     return referralCode;
@@ -67,7 +72,7 @@ const fallbackGetOrCreateReferralCode = async (userId: string, userEmail: string
   }
   
   // Create a new referral code for the user
-  const code = generateReferralCode(userId);
+  const code = generateLocalReferralCode(userId);
   
   const newReferral: Omit<Referral, 'id'> = {
     code,
@@ -81,8 +86,8 @@ const fallbackGetOrCreateReferralCode = async (userId: string, userEmail: string
   return code;
 };
 
-// Generate a unique referral code
-export const generateReferralCode = (userId: string): string => {
+// Generate a unique referral code locally
+export const generateLocalReferralCode = (userId: string): string => {
   // Create a code using the first 6 chars of userId and a random 4-char alphanumeric string
   const userIdPrefix = userId.substring(0, 6);
   const randomChars = Math.random().toString(36).substring(2, 6).toUpperCase();
@@ -113,11 +118,10 @@ export const processReferral = async (
 ): Promise<boolean> => {
   try {
     // Call the Firebase function
-    const processReferralFn = firebase.functions().httpsCallable('processReferral');
-    const result = await processReferralFn({ referralCode });
+    const result = await processReferralFn({ referralCode, newUserId, newUserEmail });
     
     console.log('[REFERRAL] Processed referral through cloud function');
-    return result.data.success;
+    return result.success;
   } catch (error) {
     console.error('[REFERRAL] Error processing referral through cloud function:', error);
     
@@ -236,20 +240,19 @@ export const claimReferralReward = async (
 };
 
 /**
- * Get all referrals for a user
+ * Get referrals for a user
  * Uses Firebase Cloud Functions for secure retrieval
  */
 export const getUserReferrals = async (userId: string): Promise<any> => {
   try {
     // Call the Firebase function
-    const getUserReferralsFn = firebase.functions().httpsCallable('getUserReferrals');
-    const result = await getUserReferralsFn();
+    const result = await getUserReferralsFn({ userId });
     
-    return result.data;
+    return result;
   } catch (error) {
     console.error('[REFERRAL] Error getting user referrals through cloud function:', error);
     
-    // Fallback to local implementation
+    // Fallback to local implementation if cloud function fails
     console.log('[REFERRAL] Falling back to local referral retrieval');
     return fallbackGetUserReferrals(userId);
   }

@@ -2,6 +2,17 @@ import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import 'firebase/compat/firestore';
 
+// Conditionally import firebase functions to avoid errors
+let functionsImported = false;
+try {
+  // Try to import firebase functions
+  require('firebase/compat/functions');
+  functionsImported = true;
+  console.log('Firebase Functions imported successfully');
+} catch (error) {
+  console.warn('Failed to import Firebase Functions - will use fallback implementation');
+}
+
 // Access environment variables from both runtime and build time
 const getEnvVariable = (key: string): string => {
   // Debug environment details
@@ -84,13 +95,24 @@ try {
   // Configure Firebase Functions to use emulator in development mode
   // Only use emulator if explicitly enabled with an environment variable
   const useEmulator = import.meta.env.MODE === 'development' && getEnvVariable('VITE_USE_FIREBASE_EMULATOR') === 'true';
-  if (useEmulator) {
-    console.log('Using Firebase emulator for functions');
-    firebase.functions().useEmulator('localhost', 5001);
+  
+  // Make sure functions were imported and exist before trying to access them
+  if (functionsImported && typeof firebase.functions === 'function') {
+    if (useEmulator) {
+      console.log('Using Firebase emulator for functions');
+      firebase.functions().useEmulator('localhost', 5001);
+    }
+    
+    // Set the default region for Firebase Functions to europe-west2 (London)
+    if (typeof firebase.app().functions === 'function') {
+      firebase.app().functions('europe-west2');
+    } else {
+      console.warn('firebase.app().functions is not available - region settings will be ignored');
+    }
+  } else {
+    console.warn('Firebase Functions not available in this build - functions will not work');
   }
   
-  // Set the default region for Firebase Functions to europe-west2 (London)
-  firebase.app().functions('europe-west2');
 } catch (error) {
   console.error("Error initializing Firebase:", error);
   throw error;
@@ -197,6 +219,37 @@ export const getUserCreationTime = () => {
   // Access the metadata with the Firebase compat API
   return user.metadata.creationTime;
 };
+
+// Create a safe function for getting Firebase functions
+export const getFunctions = (region: string = 'europe-west2') => {
+  try {
+    if (functionsImported && typeof firebase.functions === 'function') {
+      // The firebase.functions() method accepts either a string region or an app instance
+      return firebase.functions(region as any);
+    } else {
+      console.error('Firebase Functions not available in this environment');
+      // Return a mock functions object that doesn't throw errors
+      return createMockFunctions();
+    }
+  } catch (error) {
+    console.error('Error accessing Firebase Functions:', error);
+    // Return a mock functions object that doesn't throw errors
+    return createMockFunctions();
+  }
+};
+
+// Create a mock functions implementation that doesn't throw errors
+function createMockFunctions() {
+  return {
+    httpsCallable: (name: string) => {
+      console.error(`Function ${name} was called but Firebase Functions is not available`);
+      return (...args: any[]) => {
+        console.warn(`Mock function ${name} called with:`, args);
+        return Promise.reject(new Error('Firebase Functions not available'));
+      };
+    }
+  };
+}
 
 // Export Firebase instances at the end of the file
 export { auth, db, firebase }; 
