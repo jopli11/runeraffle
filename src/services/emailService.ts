@@ -2,6 +2,11 @@ import firebase from 'firebase/compat/app';
 import 'firebase/compat/functions';
 
 /**
+ * Check if we're in development mode
+ */
+const isDevelopment = process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost';
+
+/**
  * Send an email to a user
  * Uses Firebase Cloud Functions to send emails securely
  */
@@ -13,6 +18,14 @@ export const sendEmail = async (
   data?: any
 ): Promise<boolean> => {
   try {
+    // In dev mode or if no Firebase functions are available, just log the email
+    if (isDevelopment || !firebase.app().functions) {
+      console.log(`[EMAIL SERVICE DEV MODE] Would send email to ${to}`);
+      console.log(`[EMAIL SERVICE DEV MODE] Subject: ${subject}`);
+      console.log(`[EMAIL SERVICE DEV MODE] Body: ${body}`);
+      return true;
+    }
+    
     // Initialize the callable function with EU region
     const sendEmailFn = firebase.app().functions('europe-west2').httpsCallable('sendEmail');
     
@@ -55,7 +68,11 @@ export const sendWelcomeEmail = async (
     <p>The RuneRaffle Team</p>
   `;
   
-  return sendEmail(email, subject, body, 'welcome', { displayName });
+  return sendEmail(email, subject, body, 'welcome', { displayName })
+    .catch(err => {
+      console.error('[EMAIL SERVICE] Failed to send welcome email:', err);
+      return false;
+    });
 };
 
 /**
@@ -70,31 +87,36 @@ export const sendTicketPurchaseEmail = async (
   competitionEndsAt: Date,
   competitionId: string
 ): Promise<boolean> => {
-  const subject = `Ticket Purchase Confirmation - ${competitionTitle}`;
-  const body = `
-    <h1>Ticket Purchase Confirmation</h1>
-    <p>Hello ${displayName},</p>
-    <p>Thank you for purchasing a ticket for the "${competitionTitle}" competition!</p>
-    <h2>Ticket Details:</h2>
-    <ul>
-      <li>Ticket Number: #${ticketNumber}</li>
-      <li>Purchase Date: ${purchaseDate.toLocaleDateString()}</li>
-      <li>Competition Ends: ${competitionEndsAt.toLocaleDateString()}</li>
-    </ul>
-    <p>You can view the competition details and track your entry at:<br/>
-    <a href="${window.location.origin}/competition/${competitionId}">${window.location.origin}/competition/${competitionId}</a></p>
-    <p>Good luck!</p>
-    <p>The RuneRaffle Team</p>
-  `;
-  
-  return sendEmail(email, subject, body, 'ticket_purchase', {
-    displayName,
-    competitionTitle,
-    ticketNumber,
-    purchaseDate,
-    competitionEndsAt,
-    competitionId
-  });
+  try {
+    const subject = `Ticket Purchase Confirmation - ${competitionTitle}`;
+    const body = `
+      <h1>Ticket Purchase Confirmation</h1>
+      <p>Hello ${displayName},</p>
+      <p>Thank you for purchasing a ticket for the "${competitionTitle}" competition!</p>
+      <h2>Ticket Details:</h2>
+      <ul>
+        <li>Ticket Number: #${ticketNumber}</li>
+        <li>Purchase Date: ${purchaseDate.toLocaleDateString()}</li>
+        <li>Competition Ends: ${competitionEndsAt.toLocaleDateString()}</li>
+      </ul>
+      <p>You can view the competition details and track your entry at:<br/>
+      <a href="${window.location.origin}/competition/${competitionId}">${window.location.origin}/competition/${competitionId}</a></p>
+      <p>Good luck!</p>
+      <p>The RuneRaffle Team</p>
+    `;
+    
+    return sendEmail(email, subject, body, 'ticket_purchase', {
+      displayName,
+      competitionTitle,
+      ticketNumber,
+      purchaseDate,
+      competitionEndsAt,
+      competitionId
+    });
+  } catch (error) {
+    console.error('[EMAIL SERVICE] Error preparing ticket purchase email:', error);
+    return false;
+  }
 };
 
 /**

@@ -162,6 +162,7 @@ export default function AdminCompetitionForm({ competitionId, onCancel, onSucces
     difficulty: 'medium',
     ticketPrice: 3,
     totalTickets: 500,
+    maxTicketsPerUser: 30, // Default maximum tickets per user
     endsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 7 days from now
     status: 'active',
     triviaQuestion: '',
@@ -194,6 +195,7 @@ export default function AdminCompetitionForm({ competitionId, onCancel, onSucces
             difficulty: competition.difficulty || 'medium',
             ticketPrice: competition.ticketPrice || 3,
             totalTickets: competition.totalTickets || 500,
+            maxTicketsPerUser: competition.maxTicketsPerUser || 30,
             endsAt: endsAtDate,
             status: competition.status || 'active',
             triviaQuestion: competition.triviaQuestion || '',
@@ -388,7 +390,7 @@ export default function AdminCompetitionForm({ competitionId, onCancel, onSucces
         
         <SplitRow>
           <FormGroup>
-            <Label htmlFor="ticketPrice">Ticket Price (Credits)*</Label>
+            <Label htmlFor="ticketPrice">Ticket Price (credits)</Label>
             <Input
               id="ticketPrice"
               name="ticketPrice"
@@ -401,7 +403,7 @@ export default function AdminCompetitionForm({ competitionId, onCancel, onSucces
           </FormGroup>
           
           <FormGroup>
-            <Label htmlFor="totalTickets">Total Tickets*</Label>
+            <Label htmlFor="totalTickets">Total Tickets</Label>
             <Input
               id="totalTickets"
               name="totalTickets"
@@ -413,6 +415,23 @@ export default function AdminCompetitionForm({ competitionId, onCancel, onSucces
             />
           </FormGroup>
         </SplitRow>
+        
+        <FormGroup>
+          <Label htmlFor="maxTicketsPerUser">Maximum Tickets Per User</Label>
+          <Input
+            id="maxTicketsPerUser"
+            name="maxTicketsPerUser"
+            type="number"
+            min="1"
+            max={formData.totalTickets}
+            value={formData.maxTicketsPerUser}
+            onChange={handleChange}
+            required
+          />
+          <small style={{ fontSize: '0.75rem', marginTop: '0.25rem', color: 'hsl(var(--muted-foreground))' }}>
+            The maximum number of tickets a single user can purchase for this competition.
+          </small>
+        </FormGroup>
         
         <FormGroup>
           <Label htmlFor="endsAt">End Date*</Label>

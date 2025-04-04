@@ -3,6 +3,7 @@ import styled from '@emotion/styled';
 import { registerWithEmail, loginWithEmail, signInWithGoogle, sendPasswordResetEmail } from '../../config/firebase';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { processReferral } from '../../services/referralService';
+import toast from '../../utils/toast';
 
 // Styled components
 const Container = styled.div`
@@ -179,7 +180,6 @@ export default function AuthPage({ mode = 'login' }: AuthPageProps) {
   const [displayName, setDisplayName] = useState('');
   const [referralCode, setReferralCode] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -197,12 +197,22 @@ export default function AuthPage({ mode = 'login' }: AuthPageProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setSuccessMessage(null);
     setIsLoading(true);
+    
+    // Create loading toast
+    const loadingId = toast.loading(
+      activeTab === 'login' 
+        ? 'Logging in...' 
+        : activeTab === 'register' 
+          ? 'Creating your account...' 
+          : 'Sending reset email...'
+    );
 
     try {
       if (activeTab === 'login') {
         await loginWithEmail(email, password);
+        toast.dismiss(loadingId);
+        toast.success('Login successful!');
         navigate('/');
       } else if (activeTab === 'register') {
         const user = await registerWithEmail(email, password, displayName);
@@ -211,45 +221,59 @@ export default function AuthPage({ mode = 'login' }: AuthPageProps) {
         if (referralCode && user) {
           try {
             const processed = await processReferral(referralCode, user.uid, email);
+            toast.dismiss(loadingId);
             if (processed) {
-              setSuccessMessage('Account created with referral bonus! Please check your email for verification.');
+              toast.success('Account created with referral bonus! Please check your email for verification.');
             } else {
-              setSuccessMessage('Account created! Referral code could not be processed. Please check your email for verification.');
+              toast.success('Account created! Referral code could not be processed. Please check your email for verification.');
             }
           } catch (refErr) {
             console.error('Error processing referral:', refErr);
-            setSuccessMessage('Account created! Referral code could not be processed. Please check your email for verification.');
+            toast.dismiss(loadingId);
+            toast.success('Account created! Referral code could not be processed. Please check your email for verification.');
           }
         } else {
-          setSuccessMessage('Account created! Please check your email for verification.');
+          toast.dismiss(loadingId);
+          toast.success('Account created! Please check your email for verification.');
         }
         
         setTimeout(() => navigate('/'), 2000);
       } else if (activeTab === 'reset') {
         await sendPasswordResetEmail(email);
-        setSuccessMessage('Password reset email sent. Please check your inbox.');
+        toast.dismiss(loadingId);
+        toast.success('Password reset email sent. Please check your inbox.');
       }
     } catch (err: any) {
       console.error('Auth error:', err);
+      toast.dismiss(loadingId);
+      
       // Format Firebase error messages to be more user-friendly
       const errorCode = err.code || '';
       
       // Handle specific error codes
       if (errorCode.includes('auth/user-not-found') || errorCode.includes('auth/wrong-password')) {
+        toast.error('Invalid email or password. Please try again.');
         setError('Invalid email or password. Please try again.');
       } else if (errorCode.includes('auth/email-already-in-use')) {
+        toast.error('This email is already registered. Please log in instead.');
         setError('This email is already registered. Please log in instead.');
       } else if (errorCode.includes('auth/weak-password')) {
+        toast.error('Password should be at least 6 characters long.');
         setError('Password should be at least 6 characters long.');
       } else if (errorCode.includes('auth/invalid-email')) {
+        toast.error('Please enter a valid email address.');
         setError('Please enter a valid email address.');
       } else if (errorCode.includes('auth/network-request-failed')) {
+        toast.error('Network error. Please check your connection and try again.');
         setError('Network error. Please check your connection and try again.');
       } else if (errorCode.includes('auth/too-many-requests')) {
+        toast.error('Too many failed attempts. Please try again later.');
         setError('Too many failed attempts. Please try again later.');
       } else if (errorCode.includes('auth/api-key-not-valid')) {
+        toast.error('Authentication service error. Please contact support.');
         setError('Authentication service error. Please contact support.');
       } else {
+        toast.error(err.message || 'An error occurred during authentication');
         setError(err.message || 'An error occurred during authentication');
       }
     } finally {
@@ -260,12 +284,17 @@ export default function AuthPage({ mode = 'login' }: AuthPageProps) {
   const handleGoogleSignIn = async () => {
     setError(null);
     setIsLoading(true);
+    const loadingId = toast.loading('Signing in with Google...');
 
     try {
       await signInWithGoogle();
+      toast.dismiss(loadingId);
+      toast.success('Login successful!');
       navigate('/');
     } catch (err: any) {
       console.error('Google sign-in error:', err);
+      toast.dismiss(loadingId);
+      
       // Format Firebase error messages to be more user-friendly
       const errorCode = err.code || '';
       
@@ -273,17 +302,22 @@ export default function AuthPage({ mode = 'login' }: AuthPageProps) {
       if (errorCode.includes('auth/popup-closed-by-user')) {
         setError('Sign-in popup was closed. Please try again.');
       } else if (errorCode.includes('auth/popup-blocked')) {
+        toast.error('Sign-in popup was blocked. Please allow popups for this site.');
         setError('Sign-in popup was blocked. Please allow popups for this site.');
       } else if (errorCode.includes('auth/cancelled-popup-request')) {
         // This is a normal flow when user closes the popup, don't show error
         setError(null);
       } else if (errorCode.includes('auth/network-request-failed')) {
+        toast.error('Network error. Please check your connection and try again.');
         setError('Network error. Please check your connection and try again.');
       } else if (errorCode.includes('auth/too-many-requests')) {
+        toast.error('Too many failed attempts. Please try again later.');
         setError('Too many failed attempts. Please try again later.');
       } else if (errorCode.includes('auth/api-key-not-valid')) {
+        toast.error('Authentication service error. Please contact support.');
         setError('Authentication service error. Please contact support.');
       } else {
+        toast.error(err.message || 'An error occurred during Google sign-in');
         setError(err.message || 'An error occurred during Google sign-in');
       }
     } finally {
@@ -306,30 +340,24 @@ export default function AuthPage({ mode = 'login' }: AuthPageProps) {
           <Tabs>
             <Tab 
               active={activeTab === 'login'} 
-              onClick={() => { setActiveTab('login'); setError(null); setSuccessMessage(null); }}
+              onClick={() => { setActiveTab('login'); setError(null); }}
             >
               Login
             </Tab>
             <Tab 
               active={activeTab === 'register'} 
-              onClick={() => { setActiveTab('register'); setError(null); setSuccessMessage(null); }}
+              onClick={() => { setActiveTab('register'); setError(null); }}
             >
               Register
             </Tab>
             <Tab 
               active={activeTab === 'reset'} 
-              onClick={() => { setActiveTab('reset'); setError(null); setSuccessMessage(null); }}
+              onClick={() => { setActiveTab('reset'); setError(null); }}
             >
               Reset
             </Tab>
           </Tabs>
           
-          {successMessage && (
-            <div style={{ padding: '0.75rem', backgroundColor: 'rgba(22, 163, 74, 0.1)', color: 'rgb(22, 163, 74)', borderRadius: '0.375rem', marginBottom: '1rem' }}>
-              {successMessage}
-            </div>
-          )}
-
           <Form onSubmit={handleSubmit}>
             {activeTab === 'register' && (
               <>
@@ -409,7 +437,7 @@ export default function AuthPage({ mode = 'login' }: AuthPageProps) {
             <div style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.875rem', color: 'hsl(var(--muted-foreground))' }}>
               <a 
                 href="#" 
-                onClick={(e) => { e.preventDefault(); setActiveTab('reset'); setError(null); setSuccessMessage(null); }}
+                onClick={(e) => { e.preventDefault(); setActiveTab('reset'); setError(null); }}
                 style={{ color: 'hsl(var(--primary))', textDecoration: 'none' }}
               >
                 Forgot your password?

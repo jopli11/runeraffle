@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import styled from '@emotion/styled';
-import { getCompetition, buyTicket, Competition as FirestoreCompetition } from '../../services/firestore';
+import { getCompetition, buyTicket, Competition as FirestoreCompetition, getUserCompetitionTickets, updateUserCredits } from '../../services/firestore';
 import { useAuth } from '../../context/AuthContext';
-import { TicketPurchase } from './TicketPurchase';
+import TicketPurchase from './TicketPurchase';
 import { useParams, useNavigate } from 'react-router-dom';
 import ShareButtons from '../social/ShareButtons';
+import toast from '../../utils/toast';
 
 // Styled components
 const Container = styled.div`
@@ -821,160 +822,157 @@ const CompletedMessageText = styled.span`
   color: rgba(255, 255, 255, 0.7);
 `;
 
+const YourEntries = styled.div`
+  text-align: center;
+  margin-top: 1rem;
+`;
+
 export default function CompetitionPage() {
   const { id } = useParams<{ id: string }>();
-  const { currentUser, userCredits, setUserCredits } = useAuth();
   const navigate = useNavigate();
-  const [ticketCount, setTicketCount] = useState(1);
+  const { currentUser, userCredits, setUserCredits } = useAuth();
   const [competition, setCompetition] = useState<FirestoreCompetition | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [purchasing, setPurchasing] = useState(false);
   const [purchaseSuccess, setPurchaseSuccess] = useState(false);
-  
-  // New state for trivia
+  const [activeTab, setActiveTab] = useState<'details' | 'terms'>('details');
   const [triviaAnswer, setTriviaAnswer] = useState('');
-  const [triviaSubmitted, setTriviaSubmitted] = useState(false);
   const [triviaCorrect, setTriviaCorrect] = useState(false);
-  const [triviaError, setTriviaError] = useState('');
-  
-  // Add a state for competition refresh
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
-  
-  // Handle successful purchase by refreshing the competition data
-  const handlePurchaseComplete = () => {
-    setRefreshTrigger(prev => prev + 1);
-  };
+  const [triviaSubmitted, setTriviaSubmitted] = useState(false);
+  const [triviaError, setTriviaError] = useState<string | null>(null);
+  const [userEntries, setUserEntries] = useState(0);
+  const [ticketCount, setTicketCount] = useState(1);
 
   useEffect(() => {
     const fetchCompetition = async () => {
-      if (!id) {
-        setError('Competition ID is missing');
-        setLoading(false);
-        return;
-      }
-
+      setLoading(true);
       try {
-        const fetchedCompetition = await getCompetition(id);
-        if (!fetchedCompetition) {
-          setError('Competition not found');
-        } else {
-          setCompetition(fetchedCompetition);
+        if (!id) {
+          setError('Competition ID is missing');
+          setLoading(false);
+          return;
         }
-      } catch (error) {
-        console.error('Error fetching competition:', error);
-        setError('Failed to load competition details');
+        
+        const data = await getCompetition(id);
+        setCompetition(data);
+        
+        // Fetch user entries for this competition
+        if (currentUser && data) {
+          try {
+            const entries = await getUserCompetitionTickets(currentUser.uid, id);
+            setUserEntries(entries.length);
+          } catch (entriesErr) {
+            console.error("Error fetching user entries:", entriesErr);
+            // Don't fail competition loading if entries can't be fetched
+            setUserEntries(0);
+          }
+        }
+      } catch (err: any) {
+        console.error('Error fetching competition:', err);
+        setError(err.message || 'Failed to load competition');
       } finally {
         setLoading(false);
       }
     };
-
-    fetchCompetition();
-  }, [id]);
-
-  const incrementTickets = () => {
-    // Limit by user's credits and available tickets
-    const maxTickets = competition ? 
-      Math.min(
-        Math.floor(userCredits / competition.ticketPrice),
-        competition.totalTickets - competition.ticketsSold
-      ) : 0;
     
-    if (ticketCount < maxTickets) {
-      setTicketCount(ticketCount + 1);
+    fetchCompetition();
+  }, [id, currentUser]);
+
+  const handleTriviaSubmit = () => {
+    setTriviaSubmitted(true);
+    
+    // Example validation (replace with actual logic based on the question)
+    const correctAnswer = competition?.triviaAnswer || 'jagex';
+    const isCorrect = triviaAnswer.toLowerCase().trim() === correctAnswer.toLowerCase().trim();
+    
+    if (isCorrect) {
+      setTriviaCorrect(true);
+      setTriviaError(null);
+      toast.success('Correct answer! You can now purchase tickets.');
+    } else {
+      setTriviaError('Incorrect answer. Please try again.');
+      toast.error('Incorrect answer. Please try again.');
     }
   };
 
-  const decrementTickets = () => {
-    if (ticketCount > 1) {
-      setTicketCount(ticketCount - 1);
+  const handleBuyTickets = async (count: number) => {
+    if (!currentUser) {
+      toast.error('Please login to purchase tickets');
+      return;
+    }
+    
+    if (!competition) {
+      toast.error('Competition not found');
+      return;
+    }
+    
+    if (!competition.id) {
+      toast.error('Invalid competition ID');
+      return;
+    }
+    
+    // Check if user has enough credits
+    const totalCost = count * competition.ticketPrice;
+    if (userCredits < totalCost) {
+      toast.error('You do not have enough credits');
+      return;
+    }
+    
+    setPurchasing(true);
+    const loadingToastId = toast.loading('Processing your ticket purchase...');
+    
+    try {
+      // Purchase tickets
+      await buyTicket(currentUser.uid, competition.id, count);
+      
+      // Update user credits in the context (state)
+      const newCredits = userCredits - totalCost;
+      setUserCredits(newCredits);
+      
+      // Update user entries count
+      setUserEntries(userEntries + count);
+      
+      // Refresh competition data
+      const updatedCompetition = await getCompetition(competition.id);
+      setCompetition(updatedCompetition);
+      
+      setPurchaseSuccess(true);
+      toast.dismiss(loadingToastId);
+      toast.success(`Successfully purchased ${count} ticket${count > 1 ? 's' : ''}!`);
+      
+      setTimeout(() => {
+        setPurchaseSuccess(false);
+      }, 3000);
+    } catch (err: any) {
+      console.error('Error purchasing tickets:', err);
+      toast.dismiss(loadingToastId);
+      toast.error(err.message || 'Failed to purchase tickets');
+    } finally {
+      setPurchasing(false);
     }
   };
 
   const handleBackClick = () => {
     navigate('/competitions');
   };
-  
-  const handleTriviaSubmit = () => {
+
+  const incrementTickets = () => {
     if (!competition) return;
     
-    // Get correct answer, using a default if not defined
-    const correctAnswer = competition.triviaAnswer || 'Jagex';
+    const maxTickets = Math.min(
+      Math.floor(userCredits / competition.ticketPrice),
+      competition.totalTickets - competition.ticketsSold
+    );
     
-    // Case insensitive comparison
-    if (triviaAnswer.trim().toLowerCase() === correctAnswer.toLowerCase()) {
-      setTriviaCorrect(true);
-      setTriviaSubmitted(true);
-      setTriviaError('');
-    } else {
-      setTriviaCorrect(false);
-      setTriviaSubmitted(true);
-      setTriviaError('Incorrect answer. Please try again.');
-      
-      // Reset after 3 seconds
-      setTimeout(() => {
-        setTriviaSubmitted(false);
-        setTriviaError('');
-      }, 3000);
+    if (ticketCount < maxTickets) {
+      setTicketCount(prevCount => prevCount + 1);
     }
   };
   
-  const handleBuyTickets = async () => {
-    if (!currentUser || !competition || !competition.id) {
-      return;
-    }
-    
-    // Ensure trivia question is answered correctly before purchasing
-    if (!triviaCorrect) {
-      setTriviaError('Please answer the trivia question correctly before purchasing tickets.');
-      return;
-    }
-    
-    const totalCost = ticketCount * competition.ticketPrice;
-    
-    if (userCredits < totalCost) {
-      alert('Not enough credits to purchase tickets.');
-      return;
-    }
-    
-    if (competition.ticketsSold + ticketCount > competition.totalTickets) {
-      alert('Not enough tickets available.');
-      return;
-    }
-    
-    setPurchasing(true);
-    
-    try {
-      // Buy tickets one by one to get unique ticket numbers
-      for (let i = 0; i < ticketCount; i++) {
-        await buyTicket({
-          competitionId: competition.id,
-          userId: currentUser.uid,
-          ticketNumber: competition.ticketsSold + i + 1
-        });
-      }
-      
-      // Update local competition state
-      setCompetition({
-        ...competition,
-        ticketsSold: competition.ticketsSold + ticketCount
-      });
-      
-      // Update user credits
-      setUserCredits(userCredits - totalCost);
-      
-      // Reset ticket count and show success message
-      setTicketCount(1);
-      setPurchaseSuccess(true);
-      
-      setTimeout(() => {
-        setPurchaseSuccess(false);
-      }, 3000);
-    } catch (err) {
-      console.error('Error purchasing tickets:', err);
-      alert('Failed to purchase tickets. Please try again.');
-    } finally {
-      setPurchasing(false);
+  const decrementTickets = () => {
+    if (ticketCount > 1) {
+      setTicketCount(prevCount => prevCount - 1);
     }
   };
 
@@ -1160,7 +1158,7 @@ export default function CompetitionPage() {
             </CardHeader>
             
             <CardBody>
-              {/* Add the trivia section here */}
+              {/* Trivia section */}
               {!isEnded && (
                 <TriviaSection>
                   <TriviaTitle>
@@ -1199,78 +1197,89 @@ export default function CompetitionPage() {
                 </TriviaSection>
               )}
               
-              {!isEnded ? (
-                <>
-                  <TicketSelector>
-                    <TicketSelectorLabel>Number of Tickets</TicketSelectorLabel>
-                    <TicketSelectorButtons>
-                      <TicketSelectorButton onClick={decrementTickets} disabled={ticketCount === 1}>-</TicketSelectorButton>
-                      <TicketCount>{ticketCount}</TicketCount>
-                      <TicketSelectorButton 
-                        onClick={incrementTickets} 
-                        disabled={ticketCount >= Math.min(
-                          Math.floor(userCredits / competition.ticketPrice), 
-                          competition.totalTickets - competition.ticketsSold
-                        )}
-                      >+</TicketSelectorButton>
-                    </TicketSelectorButtons>
-                  </TicketSelector>
-                  
-                  <TotalPrice>
-                    <TotalPriceLabel>Total Price</TotalPriceLabel>
-                    <TotalPriceValue>{ticketCount * competition.ticketPrice} credits</TotalPriceValue>
-                  </TotalPrice>
-                  
-                  <PurchaseButton 
-                    onClick={handleBuyTickets} 
-                    disabled={!triviaCorrect || purchasing || userCredits < ticketCount * competition.ticketPrice}
-                  >
-                    {purchasing ? 'Processing...' : purchaseSuccess ? 'Purchase Complete!' : 'Buy Tickets'}
-                  </PurchaseButton>
-                  
-                  <CreditsInfo>
-                    <CreditsAvailable>
-                      Available Credits: <CreditsValue>{userCredits}</CreditsValue>
-                    </CreditsAvailable>
-                    
-                    <AddCreditsButton onClick={() => navigate('/profile/credits')}>
-                      Add Credits
-                    </AddCreditsButton>
-                  </CreditsInfo>
-                </>
+              {/* Use TicketPurchase component when trivia is correct */}
+              {!isEnded && triviaCorrect && (
+                <TicketPurchase 
+                  competition={competition}
+                  onPurchase={handleBuyTickets}
+                  disabled={purchasing}
+                  userEntries={userEntries}
+                />
+              )}
+              
+              <CreditsInfo>
+                <CreditsAvailable>
+                  Available Credits: <CreditsValue>{userCredits}</CreditsValue>
+                </CreditsAvailable>
+                {userCredits < competition.ticketPrice && (
+                  <div style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: 'rgb(239, 68, 68)' }}>
+                    Not enough credits. <a href="/profile" style={{ color: 'hsl(var(--primary))' }}>Add more credits</a>
+                  </div>
+                )}
+              </CreditsInfo>
+              
+              {currentUser ? (
+                <YourEntries>
+                  Your Entries: <span style={{ fontWeight: 'bold' }}>{userEntries}</span>
+                </YourEntries>
               ) : (
-                <CompletedMessage>
-                  <LockIcon />
-                  <CompletedMessageText>
-                    This competition has {competition.status === 'complete' ? 'ended' : 'been cancelled'}.
-                  </CompletedMessageText>
-                </CompletedMessage>
+                <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+                  <a href="/login" style={{ color: 'hsl(var(--primary))' }}>Sign in</a> to purchase tickets
+                </div>
               )}
             </CardBody>
-            
-            {/* ... existing card footer ... */}
           </Card>
           
-          {/* ... existing status card ... */}
+          {/* Competition stats */}
+          <Card style={{ marginTop: '1.5rem' }}>
+            <CardHeader>
+              <CardHeading>Competition Stats</CardHeading>
+            </CardHeader>
+            <CardBody>
+              <ProgressContainer>
+                <ProgressLabel>Tickets Sold</ProgressLabel>
+                <ProgressBarOuter>
+                  <ProgressBarInner width={`${progressPercentage}%`} />
+                </ProgressBarOuter>
+                <ProgressDetails>
+                  <ProgressText>{competition.ticketsSold} / {competition.totalTickets}</ProgressText>
+                  <ProgressPercentage>{progressPercentage}%</ProgressPercentage>
+                </ProgressDetails>
+              </ProgressContainer>
+              
+              <InfoGrid>
+                <InfoItem>
+                  <InfoLabel>Ticket Price</InfoLabel>
+                  <InfoValue>{competition.ticketPrice} credits</InfoValue>
+                </InfoItem>
+                <InfoItem>
+                  <InfoLabel>Tickets Remaining</InfoLabel>
+                  <InfoValue>{remainingTickets}</InfoValue>
+                </InfoItem>
+                <InfoItem>
+                  <InfoLabel>Difficulty</InfoLabel>
+                  <InfoValue>{competition.difficulty}</InfoValue>
+                </InfoItem>
+                <InfoItem>
+                  <InfoLabel>Ends In</InfoLabel>
+                  <EndsInValue ending={formattedTimeLeft === 'Ending Soon'}>
+                    {formattedTimeLeft}
+                  </EndsInValue>
+                </InfoItem>
+              </InfoGrid>
+              
+              {/* Share section */}
+              <div style={{ marginTop: '1.5rem' }}>
+                <div style={{ marginBottom: '0.75rem', fontWeight: '500' }}>Share</div>
+                <ShareButtons 
+                  title={competition.title} 
+                  url={window.location.href}
+                />
+              </div>
+            </CardBody>
+          </Card>
         </Sidebar>
       </CompetitionLayout>
-      
-      {/* Add TicketPurchase component before or after the CompetitionDetails */}
-      {competition && currentUser && (
-        <TicketPurchase 
-          competition={competition} 
-          onPurchaseComplete={handlePurchaseComplete} 
-        />
-      )}
-      
-      {/* After prize section */}
-      <SectionDivider />
-      <SectionTitle>Share this competition</SectionTitle>
-      <ShareButtons 
-        title={`Check out this RuneRaffle competition: ${competition.title}`}
-        url={window.location.href}
-        description={`${competition.description} Prize value: ${competition.prizeValue} credits. Enter now!`}
-      />
     </Container>
   );
 } 

@@ -17,6 +17,7 @@ export interface Competition {
   ticketPrice: number;
   ticketsSold: number;
   totalTickets: number;
+  maxTicketsPerUser?: number; // Maximum tickets a user can purchase for this competition
   endsAt: firebase.firestore.Timestamp;
   createdAt: firebase.firestore.Timestamp;
   updatedAt: firebase.firestore.Timestamp;
@@ -177,7 +178,162 @@ export const cancelCompetition = async (id: string, autoRefund: boolean = false)
 };
 
 // Ticket operations
-export const buyTicket = async (ticket: Omit<Ticket, 'id' | 'purchasedAt' | 'isWinner'>): Promise<string> => {
+export const buyTicket = async (userId: string, competitionId: string, count: number = 1): Promise<void> => {
+  if (!userId || !competitionId) {
+    throw new Error('Invalid user ID or competition ID');
+  }
+  
+  // Get competition to get current ticket count
+  const competitionRef = competitionsRef.doc(competitionId);
+  const competitionSnap = await competitionRef.get();
+  
+  if (!competitionSnap.exists) {
+    throw new Error('Competition not found');
+  }
+  
+  const competition = competitionSnap.data() as Competition;
+  
+  // Check if enough tickets are available
+  if (competition.ticketsSold + count > competition.totalTickets) {
+    throw new Error('Not enough tickets available');
+  }
+  
+  // Check user ticket limit if defined
+  if (competition.maxTicketsPerUser) {
+    const userTickets = await getUserCompetitionTickets(userId, competitionId);
+    if (userTickets.length + count > competition.maxTicketsPerUser) {
+      throw new Error(`You can only purchase up to ${competition.maxTicketsPerUser} tickets for this competition`);
+    }
+  }
+  
+  // Get authentication user email from Firebase Auth
+  const auth = firebase.auth();
+  const currentUser = auth.currentUser;
+  
+  if (!currentUser) {
+    throw new Error('User not authenticated');
+  }
+  
+  // First try to find user document by email (which is usually the document ID)
+  const userEmail = currentUser.email;
+  
+  if (!userEmail) {
+    throw new Error('User email not found');
+  }
+  
+  // Try getting user by email first (most common)
+  let userDocRef = usersRef.doc(userEmail);
+  let userDoc = await userDocRef.get();
+  
+  // If not found by email as doc ID, try querying by email field and uid field
+  if (!userDoc.exists) {
+    console.log(`User doc not found by email as ID, trying to find by query on email field`);
+    const userQueryByEmail = await usersRef.where('email', '==', userEmail).limit(1).get();
+    
+    if (!userQueryByEmail.empty) {
+      userDocRef = userQueryByEmail.docs[0].ref;
+      userDoc = userQueryByEmail.docs[0];
+    } else {
+      console.log(`User doc not found by email field, trying to find by uid field`);
+      // Try finding by UID
+      const userQueryByUid = await usersRef.where('uid', '==', userId).limit(1).get();
+      
+      if (!userQueryByUid.empty) {
+        userDocRef = userQueryByUid.docs[0].ref;
+        userDoc = userQueryByUid.docs[0];
+      } else {
+        console.log(`No user document found for email: ${userEmail} or userId: ${userId}`);
+        throw new Error('User not found');
+      }
+    }
+  }
+  
+  // Get user data to check credits
+  const userData = userDoc.data() as User;
+  if (!userData) {
+    throw new Error('User data not found');
+  }
+  
+  // Verify user has enough credits
+  const totalCost = count * competition.ticketPrice;
+  if (userData.credits < totalCost) {
+    throw new Error('Not enough credits');
+  }
+  
+  // Create batch for multiple operations
+  const batch = db.batch();
+  
+  // Add tickets
+  let ticketRefs = [];
+  
+  for (let i = 0; i < count; i++) {
+    const ticketNumber = competition.ticketsSold + i + 1;
+    const newTicketRef = ticketsRef.doc();
+    ticketRefs.push(newTicketRef);
+    
+    batch.set(newTicketRef, {
+      competitionId,
+      userId,
+      ticketNumber,
+      purchasedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      isWinner: false
+    });
+  }
+  
+  // Update competition ticket count
+  batch.update(competitionRef, {
+    ticketsSold: competition.ticketsSold + count,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  
+  // Update user credits
+  batch.update(userDocRef, {
+    credits: userData.credits - totalCost,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  
+  // Commit all changes
+  await batch.commit();
+  
+  // Get updated user info for notification and email (outside the batch)
+  const updatedUserData = (await userDocRef.get()).data();
+  
+  if (updatedUserData && updatedUserData.email) {
+    // Use Promise.allSettled to prevent any notification failures from affecting the ticket purchase
+    Promise.allSettled(
+      ticketRefs.map((ticketRef, i) => {
+        const ticketNumber = competition.ticketsSold + i + 1;
+        
+        return Promise.allSettled([
+          // Create notification for the user
+          notifyTicketPurchase(
+            userId,
+            competitionId,
+            ticketRef.id,
+            competition.title,
+            ticketNumber
+          ).catch(err => console.error('Error sending notification:', err)),
+          
+          // Send purchase confirmation email
+          sendTicketPurchaseEmail(
+            updatedUserData.email,
+            updatedUserData.displayName || 'User',
+            competition.title,
+            ticketNumber,
+            new Date(),
+            competition.endsAt.toDate(),
+            competitionId
+          ).catch(err => console.error('Error sending email:', err))
+        ]);
+      })
+    ).catch(err => {
+      console.error('Error in notification promises:', err);
+      // Don't throw, this shouldn't affect the ticket purchase
+    });
+  }
+};
+
+export const buyTicketOriginal = async (ticket: Omit<Ticket, 'id' | 'purchasedAt' | 'isWinner'>): Promise<string> => {
   const newTicket = {
     ...ticket,
     purchasedAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -229,12 +385,20 @@ export const buyTicket = async (ticket: Omit<Ticket, 'id' | 'purchasedAt' | 'isW
 };
 
 export const getUserTickets = async (userId: string): Promise<Ticket[]> => {
-  const snapshot = await ticketsRef.where('userId', '==', userId).orderBy('purchasedAt', 'desc').get();
+  const snapshot = await ticketsRef.where('userId', '==', userId).get();
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as Ticket }));
 };
 
 export const getCompetitionTickets = async (competitionId: string): Promise<Ticket[]> => {
-  const snapshot = await ticketsRef.where('competitionId', '==', competitionId).orderBy('purchasedAt', 'asc').get();
+  const snapshot = await ticketsRef.where('competitionId', '==', competitionId).get();
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as Ticket }));
+};
+
+export const getUserCompetitionTickets = async (userId: string, competitionId: string): Promise<Ticket[]> => {
+  const snapshot = await ticketsRef
+    .where('userId', '==', userId)
+    .where('competitionId', '==', competitionId)
+    .get();
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as Ticket }));
 };
 

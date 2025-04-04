@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { getUserTickets } from '../../services/firestore';
 import { getCompetition } from '../../services/firestore';
 import { useNavigate } from 'react-router-dom';
+import toast from '../../utils/toast';
 
 // Styled components
 const DashboardContainer = styled.div`
@@ -193,6 +194,9 @@ export function Dashboard() {
         return total + (ticket.competition?.ticketPrice || 0);
       }, 0);
       
+      // Get unique competition IDs to count total competitions entered
+      const uniqueCompetitionIds = new Set(userTickets.map(ticket => ticket.competitionId));
+      
       // Sort by purchase date, most recent first
       const sortedTickets = ticketsWithCompetitions.sort((a, b) => {
         const dateA = a.purchasedAt?.toDate ? a.purchasedAt.toDate() : new Date(0);
@@ -205,7 +209,7 @@ export function Dashboard() {
       
       setRecentTickets(recent);
       setStats({
-        totalCompetitions: userTickets.length,
+        totalCompetitions: uniqueCompetitionIds.size,
         winCount,
         ticketsBought,
         spentCredits
@@ -231,21 +235,29 @@ export function Dashboard() {
     
     // In a real app, this would open a payment modal
     // For demo purposes, we'll just add 100 credits
-    const newCredits = userCredits + 100;
+    const loadingId = toast.loading('Processing payment...');
     
-    // This would be handled by a cloud function in a real app
-    // to prevent client-side manipulation
-    import('../../services/firestore').then(({ updateUser }) => {
-      // Make sure email is not null before passing to updateUser
-      const email = currentUser.email || '';
-      updateUser(email, {
-        credits: newCredits
-      }).then(() => {
-        setUserCredits(newCredits);
-      }).catch(error => {
-        console.error('Error adding credits:', error);
+    setTimeout(() => {
+      const newCredits = userCredits + 100;
+      
+      // This would be handled by a cloud function in a real app
+      // to prevent client-side manipulation
+      import('../../services/firestore').then(({ updateUser }) => {
+        // Make sure email is not null before passing to updateUser
+        const email = currentUser.email || '';
+        updateUser(email, {
+          credits: newCredits
+        }).then(() => {
+          setUserCredits(newCredits);
+          toast.dismiss(loadingId);
+          toast.success('100 credits added to your account!');
+        }).catch(error => {
+          console.error('Error adding credits:', error);
+          toast.dismiss(loadingId);
+          toast.error('Failed to add credits. Please try again.');
+        });
       });
-    });
+    }, 1500); // Simulate a payment process delay
   };
   
   if (isLoading) {

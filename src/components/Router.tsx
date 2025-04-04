@@ -17,6 +17,7 @@ import styled from '@emotion/styled';
 import { SupportPage } from './support/SupportPage';
 import TermsOfService from './legal/TermsOfService';
 import PrivacyPolicy from './legal/PrivacyPolicy';
+import ToastProvider from './ui/ToastProvider';
 
 // Define main layout components
 const PageWrapper = styled.div`
@@ -36,39 +37,41 @@ export default function Router() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <PageWrapper>
-          <Header />
-          <Main>
-            <Routes>
-              <Route path="/" element={<App />} />
-              <Route path="/profile" element={<ProfilePage />} />
-              <Route path="/referrals" element={<ReferralPage />} />
-              <Route path="/competitions" element={<CompetitionsPage />} />
-              <Route path="/competition/:id" element={<CompetitionPage />} />
-              <Route path="/winners" element={<WinnersPage />} />
-              <Route path="/how-it-works" element={<HowItWorksPage />} />
-              <Route path="/verification/:id" element={<VerificationPage />} />
-              <Route path="/login" element={<AuthPage mode="login" />} />
-              <Route path="/register" element={<AuthPage mode="register" />} />
-              
-              {/* Admin routes */}
-              <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="/admin/support" element={<Navigate to="/admin?tab=support" replace />} />
-              <Route path="/admin/edit-competition/:id" element={<AdminDashboard />} />
-              <Route path="/admin/competitions" element={<AdminDashboard />} />
-              <Route path="/admin/users" element={<AdminDashboard />} />
-              <Route path="/admin/winners" element={<AdminDashboard />} />
-              <Route path="/admin/analytics" element={<AdminDashboard />} />
-              
-              <Route path="/support" element={<SupportPage />} />
-              
-              {/* Legal pages */}
-              <Route path="/terms" element={<TermsOfService />} />
-              <Route path="/privacy" element={<PrivacyPolicy />} />
-            </Routes>
-          </Main>
-          <Footer />
-        </PageWrapper>
+        <ToastProvider>
+          <PageWrapper>
+            <Header />
+            <Main>
+              <Routes>
+                <Route path="/" element={<App />} />
+                <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/referrals" element={<ReferralPage />} />
+                <Route path="/competitions" element={<CompetitionsPage />} />
+                <Route path="/competition/:id" element={<CompetitionPage />} />
+                <Route path="/winners" element={<WinnersPage />} />
+                <Route path="/how-it-works" element={<HowItWorksPage />} />
+                <Route path="/verification/:id" element={<VerificationPage />} />
+                <Route path="/login" element={<AuthPage mode="login" />} />
+                <Route path="/register" element={<AuthPage mode="register" />} />
+                
+                {/* Admin routes */}
+                <Route path="/admin" element={<AdminDashboard />} />
+                <Route path="/admin/support" element={<Navigate to="/admin?tab=support" replace />} />
+                <Route path="/admin/edit-competition/:id" element={<AdminDashboard />} />
+                <Route path="/admin/competitions" element={<AdminDashboard />} />
+                <Route path="/admin/users" element={<AdminDashboard />} />
+                <Route path="/admin/winners" element={<AdminDashboard />} />
+                <Route path="/admin/analytics" element={<AdminDashboard />} />
+                
+                <Route path="/support" element={<SupportPage />} />
+                
+                {/* Legal pages */}
+                <Route path="/terms" element={<TermsOfService />} />
+                <Route path="/privacy" element={<PrivacyPolicy />} />
+              </Routes>
+            </Main>
+            <Footer />
+          </PageWrapper>
+        </ToastProvider>
       </AuthProvider>
     </BrowserRouter>
   );

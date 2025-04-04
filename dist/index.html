@@ -1,8 +1,9 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 
     <head>
         <meta charset="UTF-8" />
+        <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
@@ -12,12 +13,32 @@
         <meta name="theme-color" content="#60A5FA" />
         <meta name="description" content="RuneRaffle - The premier platform for RuneScape raffles and competitions" />
         <title>RuneRaffle - Compete and Win RuneScape Prizes</title>
-      <script type="module" crossorigin src="/assets/index-pcz2HFrz.js"></script>
-      <link rel="stylesheet" crossorigin href="/assets/index-BIb6I3Fl.css">
+        <!-- Load environment variables before the app -->
+        <script>
+            // Debug loading sequence
+            console.log('HTML document loading started at:', new Date().toISOString());
+        </script>
+        <script src="/env-config.js"></script>
+        <script src="/wrapper.js"></script>
+        <script>
+            // Verify that environment variables loaded correctly
+            window.addEventListener('DOMContentLoaded', function() {
+                console.log('DOM content loaded at:', new Date().toISOString());
+                if (window.ENV) {
+                    console.log('Environment variables loaded successfully');
+                    console.log('Available keys:', Object.keys(window.ENV));
+                } else {
+                    console.error('Failed to load environment variables');
+                }
+            });
+        </script>
+      <script type="module" crossorigin src="/assets/main-CcvdSlPo.js"></script>
+      <link rel="stylesheet" crossorigin href="/assets/main-BIb6I3Fl.css">
     </head>
 
     <body>
-        <div id="root"></div>
+        <div id="root"></div>
+        <!-- In development, this will be served by Vite, in production it will be replaced with the built path -->
     </body>
 
 </html>
