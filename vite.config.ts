@@ -13,4 +13,12 @@ export default defineConfig({
   css: {
     devSourcemap: true,
   },
+  server: {
+    port: parseInt(process.env.PORT || '5173'),
+    host: true,
+  },
+  preview: {
+    port: parseInt(process.env.PORT || '5173'),
+    host: true,
+  },
 }) 
