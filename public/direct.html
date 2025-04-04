@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+        <meta charset="UTF-8" />
+        <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="theme-color" content="#60A5FA" />
+        <meta name="description" content="RuneRaffle - The premier platform for RuneScape raffles and competitions" />
+        <title>RuneRaffle - Direct Access</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                background-color: #f8f9fa;
+                margin: 0;
+                padding: 20px;
+                color: #333;
+            }
+            
+            .container {
+                max-width: 800px;
+                margin: 40px auto;
+                background: white;
+                border-radius: 8px;
+                padding: 20px;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            }
+            
+            h1 {
+                color: #2563eb;
+                margin-top: 0;
+            }
+            
+            button {
+                background: #2563eb;
+                color: white;
+                border: none;
+                padding: 10px 16px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 16px;
+                margin-top: 20px;
+            }
+            
+            button:hover {
+                background: #1d4ed8;
+            }
+            
+            pre {
+                background: #f1f5f9;
+                padding: 10px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+        </style>
+        <script src="/env-config.js"></script>
+    </head>
+
+    <body>
+        <div class="container">
+            <h1>RuneRaffle - Direct Access</h1>
+            <p>This page is a diagnostic tool for direct access to the application.</p>
+
+            <h2>Environment Check</h2>
+            <div id="env-status">Checking environment variables...</div>
+
+            <h2>Asset Check</h2>
+            <div id="asset-status">Checking assets...</div>
+
+            <button id="go-to-app">Go to Application</button>
+        </div>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                // Check environment variables
+                const envStatus = document.getElementById('env-status');
+                if (window.ENV) {
+                    const keys = Object.keys(window.ENV);
+                    const envHtml = `
+          <p style="color: green;">✓ Environment variables loaded successfully.</p>
+          <p>Found ${keys.length} variables: ${keys.join(', ')}</p>
+        `;
+                    envStatus.innerHTML = envHtml;
+                } else {
+                    envStatus.innerHTML = `
+          <p style="color: red;">✗ Environment variables not available.</p>
+          <p>Please check that the env-config.js file is being served correctly.</p>
+        `;
+                }
+
+                // Check assets
+                const assetStatus = document.getElementById('asset-status');
+
+                // Dynamically check for asset files
+                async function checkAssets() {
+                    try {
+                        // First, let's try to find the assets directory
+                        const response = await fetch('/');
+                        const pageHtml = await response.text();
+
+                        // Extract script paths
+                        const scriptRegex = /<script[^>]*src="([^"]+)"[^>]*>/g;
+                        const cssRegex = /<link[^>]*href="([^"]+)"[^>]*rel="stylesheet"[^>]*>/g;
+
+                        const scriptMatches = [...pageHtml.matchAll(scriptRegex)].map(m => m[1]);
+                        const cssMatches = [...pageHtml.matchAll(cssRegex)].map(m => m[1]);
+
+                        const assetPaths = [
+                            ...scriptMatches,
+                            ...cssMatches,
+                            '/wrapper.js',
+                            '/env-config.js'
+                        ].filter(path => path && !path.includes('http'));
+
+                        assetStatus.innerHTML = `<p>Found ${assetPaths.length} potential assets to check.</p>`;
+
+                        // Check each asset
+                        const results = await Promise.all(
+                            assetPaths.map(path =>
+                                fetch(path)
+                                .then(r => ({
+                                    path,
+                                    status: r.status,
+                                    ok: r.ok
+                                }))
+                                .catch(e => ({
+                                    path,
+                                    error: e.message
+                                }))
+                            )
+                        );
+
+                        let resultHtml = '<ul>';
+                        let allOk = true;
+
+                        results.forEach(result => {
+                            if (result.ok) {
+                                resultHtml += `<li style="color: green;">✓ ${result.path} - OK (${result.status})</li>`;
+                            } else if (result.status) {
+                                resultHtml += `<li style="color: red;">✗ ${result.path} - Failed (${result.status})</li>`;
+                                allOk = false;
+                            } else {
+                                resultHtml += `<li style="color: red;">✗ ${result.path} - Error: ${result.error}</li>`;
+                                allOk = false;
+                            }
+                        });
+
+                        resultHtml += '</ul>';
+
+                        if (allOk) {
+                            resultHtml = '<p style="color: green;">✓ All assets appear to be available.</p>' + resultHtml;
+                        } else {
+                            resultHtml = '<p style="color: red;">✗ Some assets failed to load.</p>' + resultHtml;
+                        }
+
+                        assetStatus.innerHTML = resultHtml;
+                    } catch (error) {
+                        assetStatus.innerHTML = `<p style="color: red;">Error checking assets: ${error.message}</p>`;
+                    }
+                }
+
+                checkAssets();
+
+                // Go to application button
+                document.getElementById('go-to-app').addEventListener('click', function() {
+                    window.location.href = '/';
+                });
+            });
+        </script>
+    </body>
+
+</html>

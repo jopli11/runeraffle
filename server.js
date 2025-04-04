@@ -52,8 +52,15 @@ if (!fs.existsSync(distPath)) {
 
 // Set correct MIME types for JavaScript files
 app.use(function(req, res, next) {
+  // Handle JavaScript files
   if (req.path.endsWith('.js')) {
     res.type('application/javascript');
+  }
+  // Handle source TypeScript files
+  else if (req.path.endsWith('.ts') || req.path.endsWith('.tsx')) {
+    // For direct source requests, we need to prevent serving them directly for security
+    console.warn(`Attempt to access source file directly: ${req.path}`);
+    return res.redirect('/');
   }
   next();
 });
@@ -97,6 +104,29 @@ app.get('/api/test', (req, res) => {
     env: process.env.NODE_ENV,
     time: new Date().toISOString()
   });
+});
+
+// Add a diagnostic route
+app.get('/diagnostic', (req, res) => {
+  const directPath = path.join(__dirname, 'dist', 'direct.html');
+  if (fs.existsSync(directPath)) {
+    res.sendFile(directPath);
+  } else {
+    res.send(`
+      <html>
+        <head><title>Diagnostic</title></head>
+        <body>
+          <h1>Diagnostic Page</h1>
+          <p>The diagnostic tool (direct.html) is not available.</p>
+          <h2>Available Files</h2>
+          <pre>${fs.readdirSync(path.join(__dirname, 'dist')).join('\n')}</pre>
+          <h2>Environment</h2>
+          <p>NODE_ENV: ${process.env.NODE_ENV}</p>
+          <p>Available env vars: ${Object.keys(process.env).filter(key => key.startsWith('VITE_')).join(', ')}</p>
+        </body>
+      </html>
+    `);
+  }
 });
 
 // For any request not matching a static file, serve the index.html

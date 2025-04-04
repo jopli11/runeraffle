@@ -102,6 +102,7 @@ const updatedHtml = `<!DOCTYPE html>
     }, true);
   </script>
   <script src="/env-config.js"></script>
+  <script src="/wrapper.js"></script>
   <script>
     // Verify that environment variables loaded correctly
     window.addEventListener('DOMContentLoaded', function() {
@@ -133,6 +134,16 @@ if (fs.existsSync(wrapperSourcePath)) {
   console.log('Copied wrapper.js to dist directory');
 } else {
   console.error('wrapper.js not found in public directory!');
+}
+
+// Copy the direct.html to the dist directory
+const directSourcePath = path.join(__dirname, '..', 'public', 'direct.html');
+const directDestPath = path.join(distPath, 'direct.html');
+if (fs.existsSync(directSourcePath)) {
+  fs.copyFileSync(directSourcePath, directDestPath);
+  console.log('Copied direct.html to dist directory');
+} else {
+  console.error('direct.html not found in public directory!');
 }
 
 // Also create a copy of index.html in the root directory for reference

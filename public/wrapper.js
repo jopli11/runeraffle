@@ -2,6 +2,9 @@
 (function() {
     console.log('Wrapper script initializing...');
 
+    // Track page load time for debugging
+    const startTime = new Date().getTime();
+
     // Function to handle loading the main script
     function loadMainScript() {
         // Find the main JavaScript file
@@ -9,12 +12,54 @@
         const mainScriptUrl = scripts.length > 0 ? scripts[0].getAttribute('src') : null;
 
         console.log('Main script URL detected:', mainScriptUrl);
+        console.log('Time elapsed since page load:', new Date().getTime() - startTime, 'ms');
 
         if (!mainScriptUrl) {
             console.error('Could not find main script URL');
             displayError('Could not find main application script.');
             return;
         }
+
+        // Ensure the script loads correctly 
+        const scriptEl = document.createElement('script');
+        scriptEl.type = 'module';
+        scriptEl.src = mainScriptUrl;
+        scriptEl.async = true;
+
+        scriptEl.onload = function() {
+            console.log('Main script loaded successfully');
+        };
+
+        scriptEl.onerror = function(error) {
+            console.error('Failed to load main script:', error);
+            console.log('Attempting fallback loading method...');
+
+            // Try to fetch the script directly to see the response
+            fetch(mainScriptUrl)
+                .then(response => {
+                    console.log('Fetch response:', {
+                        status: response.status,
+                        statusText: response.statusText,
+                        headers: Array.from(response.headers.entries())
+                    });
+                    if (!response.ok) {
+                        return response.text().then(text => {
+                            console.error('Error response content:', text.substring(0, 500));
+                            throw new Error(`HTTP error: ${response.status}`);
+                        });
+                    }
+                    return response.text();
+                })
+                .then(content => {
+                    console.log('Successfully fetched script content (length):', content.length);
+                })
+                .catch(error => {
+                    console.error('Fetch failed:', error);
+                    displayError(`Failed to load application: ${error.message}`);
+                });
+        };
+
+        document.body.appendChild(scriptEl);
 
         // Check if ENV is available
         if (!window.ENV) {
