@@ -50,6 +50,14 @@ if (!fs.existsSync(distPath)) {
   console.log('dist directory contents:', fs.readdirSync(distPath));
 }
 
+// Set correct MIME types for JavaScript files
+app.use(function(req, res, next) {
+  if (req.path.endsWith('.js')) {
+    res.type('application/javascript');
+  }
+  next();
+});
+
 // Serve static files from the Vite build directory
 app.use(express.static(path.join(__dirname, 'dist')));
 
@@ -91,7 +99,7 @@ app.get('/api/test', (req, res) => {
   });
 });
 
-// For any request not for static assets, serve the index.html
+// For any request not matching a static file, serve the index.html
 app.get('*', (req, res) => {
   const indexPath = path.join(__dirname, 'dist', 'index.html');
   
@@ -131,6 +139,16 @@ app.listen(PORT, () => {
       files.forEach(file => {
         console.log(`- ${file}`);
       });
+      
+      // Also check assets directory
+      const assetsPath = path.join(distPath, 'assets');
+      if (fs.existsSync(assetsPath)) {
+        console.log('Contents of assets directory:');
+        const assetFiles = fs.readdirSync(assetsPath);
+        assetFiles.forEach(file => {
+          console.log(`- assets/${file}`);
+        });
+      }
     } else {
       console.error('dist directory not found!');
     }

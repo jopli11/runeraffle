@@ -28,6 +28,16 @@ export default defineConfig({
       input: {
         main: path.resolve(__dirname, 'index.html'),
       },
+      output: {
+        // Ensure consistent file names for easier referencing
+        entryFileNames: 'assets/[name]-[hash].js',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash].[ext]',
+      },
     },
+    // Prevent minification in development for easier debugging
+    minify: process.env.NODE_ENV === 'production',
+    // Generate sourcemaps in development
+    sourcemap: process.env.NODE_ENV !== 'production',
   },
 }) 

@@ -47,6 +47,17 @@ try {
   console.log('window.ENV available:', typeof window !== 'undefined' && !!window.ENV);
   if (window.ENV) {
     console.log('window.ENV keys:', Object.keys(window.ENV));
+  } else {
+    console.warn('window.ENV not available - using fallback from import.meta.env');
+    // Create a fallback ENV object from import.meta.env
+    window.ENV = {} as any;
+    Object.keys(import.meta.env).forEach(key => {
+      if (key.startsWith('VITE_')) {
+        if (window.ENV) {
+          window.ENV[key] = (import.meta.env as any)[key];
+        }
+      }
+    });
   }
   
   // Check for Firebase environment variables
