@@ -353,21 +353,8 @@ export default function TicketPurchase({
     setError(null);
     
     try {
-      const startingTicketNumber = competition.ticketsSold + 1;
-      
-      const ticketPromises = [];
-      for (let i = 0; i < ticketCount; i++) {
-        const ticketNumber = startingTicketNumber + i;
-        ticketPromises.push(
-          buyTicket({
-            competitionId: competition.id,
-            userId: currentUser.uid,
-            ticketNumber
-          })
-        );
-      }
-      
-      await Promise.all(ticketPromises);
+      // Use the new buyTicket function signature
+      await buyTicket(currentUser.uid, competition.id, ticketCount);
       
       const newCredits = userCredits - totalCost;
       if (currentUser.email) {

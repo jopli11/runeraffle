@@ -746,14 +746,8 @@ export default function App() {
     setPurchaseLoading(true);
     
     try {
-      // Buy tickets one by one to get unique ticket numbers
-      for (let i = 0; i < ticketCount; i++) {
-        await buyTicket({
-          competitionId: featuredCompetition.id,
-          userId: currentUser.uid,
-          ticketNumber: featuredCompetition.ticketsSold + i + 1
-        });
-      }
+      // Buy tickets using the new function signature
+      await buyTicket(currentUser.uid, featuredCompetition.id, ticketCount);
       
       // Update local competition state
       setFeaturedCompetition({
