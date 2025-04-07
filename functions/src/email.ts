@@ -14,7 +14,8 @@ const getMailgunConfig = () => {
     apiKey: functions.config().mailgun?.key || '',
     domain: functions.config().mailgun?.domain || '',
     sender: functions.config().mailgun?.sender || 'noreply@runeraffle.com',
-    senderName: functions.config().mailgun?.sender_name || 'RuneRaffle'
+    senderName: functions.config().mailgun?.sender_name || 'RuneRaffle',
+    region: functions.config().mailgun?.region || 'eu'
   };
 };
 
@@ -115,17 +116,34 @@ async function sendMailWithMailgun(to: string, subject: string, html?: string, t
   
   const auth = Buffer.from(`api:${config.apiKey}`).toString('base64');
   
-  const response = await fetch(`https://api.mailgun.net/v3/${config.domain}/messages`, {
-    method: 'POST',
-    body: form as any,
-    headers: {
-      Authorization: `Basic ${auth}`
-    }
-  });
+  // Use EU endpoint if configured for EU region
+  const endpoint = config.region === 'eu' 
+    ? `https://api.eu.mailgun.net/v3/${config.domain}/messages`
+    : `https://api.mailgun.net/v3/${config.domain}/messages`;
   
-  if (!response.ok) {
-    const responseData = await response.text();
-    throw new Error(`Mailgun API error: ${response.status} ${response.statusText} - ${responseData}`);
+  try {
+    console.log(`Sending email via Mailgun to ${to}`);
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      body: form as any,
+      headers: {
+        Authorization: `Basic ${auth}`
+      }
+    });
+    
+    if (!response.ok) {
+      const responseData = await response.text();
+      console.error(`Mailgun API error: ${response.status} ${response.statusText}`);
+      console.error(`Response: ${responseData}`);
+      throw new Error(`Mailgun API error: ${response.status} ${response.statusText} - ${responseData}`);
+    }
+    
+    const responseData = await response.json();
+    console.log('Mailgun API response:', responseData);
+    return;
+  } catch (error) {
+    console.error('Error sending email via Mailgun:', error);
+    throw error;
   }
 }
 

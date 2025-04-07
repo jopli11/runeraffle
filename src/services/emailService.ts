@@ -7,8 +7,102 @@ import 'firebase/compat/functions';
 const isDevelopment = process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost';
 
 /**
+ * Get environment variables
+ */
+const MAILGUN_API_KEY = import.meta.env.VITE_MAILGUN_API_KEY;
+const MAILGUN_DOMAIN = import.meta.env.VITE_MAILGUN_DOMAIN;
+const MAILGUN_REGION = import.meta.env.VITE_MAILGUN_REGION || 'eu';
+const EMAIL_FROM = import.meta.env.VITE_EMAIL_FROM || 'noreply@runeraffle.com';
+
+/**
+ * Check if Mailgun is configured
+ */
+const isMailgunConfigured = MAILGUN_API_KEY && MAILGUN_DOMAIN;
+
+/**
+ * Send an email via Mailgun directly from the client
+ * Note: This should only be used for non-sensitive emails as it exposes your API key
+ * For production, it's better to use a server-side function to send emails
+ */
+const sendMailgunEmail = async (
+  to: string,
+  subject: string,
+  html: string
+): Promise<boolean> => {
+  try {
+    if (!isMailgunConfigured) {
+      console.warn('[EMAIL SERVICE] Mailgun is not properly configured. Check your environment variables.');
+      return false;
+    }
+
+    const endpoint = MAILGUN_REGION === 'eu' 
+      ? 'https://api.eu.mailgun.net/v3' 
+      : 'https://api.mailgun.net/v3';
+    
+    const url = `${endpoint}/${MAILGUN_DOMAIN}/messages`;
+    
+    const formData = new FormData();
+    formData.append('from', EMAIL_FROM);
+    formData.append('to', to);
+    formData.append('subject', subject);
+    formData.append('html', html);
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${btoa(`api:${MAILGUN_API_KEY}`)}`,
+      },
+      body: formData,
+    });
+    
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Mailgun API error: ${error}`);
+    }
+    
+    console.log('[EMAIL SERVICE] Email sent successfully via Mailgun');
+    return true;
+  } catch (error) {
+    console.error('[EMAIL SERVICE] Error sending email via Mailgun:', error);
+    return false;
+  }
+};
+
+/**
+ * Send email using Firebase Cloud Function (preferred for production)
+ */
+const sendEmailViaFirebase = async (
+  to: string,
+  subject: string,
+  html: string,
+  templateId?: string,
+  data?: any
+): Promise<boolean> => {
+  try {
+    // Initialize the callable function with EU region
+    const sendEmailFn = firebase.app().functions('europe-west2').httpsCallable('sendEmail');
+    
+    // Call the function with the email data
+    await sendEmailFn({
+      to,
+      subject,
+      html,
+      template: templateId,
+      data
+    });
+    
+    console.log('[EMAIL SERVICE] Email sent successfully via Firebase Cloud Function');
+    return true;
+  } catch (error) {
+    console.error('[EMAIL SERVICE] Error sending email via Firebase:', error);
+    throw error; // Re-throw to allow the main function to try the fallback
+  }
+};
+
+/**
  * Send an email to a user
- * Uses Firebase Cloud Functions to send emails securely
+ * Tries Firebase Cloud Function first, then falls back to Mailgun direct API if configured,
+ * and finally just logs the email content if in development mode
  */
 export const sendEmail = async (
   to: string,
@@ -18,33 +112,33 @@ export const sendEmail = async (
   data?: any
 ): Promise<boolean> => {
   try {
-    // In dev mode or if no Firebase functions are available, just log the email
-    if (isDevelopment || !firebase.app().functions) {
+    // In development mode with emulator flag disabled, just log the email
+    if (isDevelopment && import.meta.env.VITE_USE_FIREBASE_EMULATOR !== 'true') {
       console.log(`[EMAIL SERVICE DEV MODE] Would send email to ${to}`);
       console.log(`[EMAIL SERVICE DEV MODE] Subject: ${subject}`);
       console.log(`[EMAIL SERVICE DEV MODE] Body: ${body}`);
       return true;
     }
     
-    // Initialize the callable function with EU region
-    const sendEmailFn = firebase.app().functions('europe-west2').httpsCallable('sendEmail');
-    
-    // Call the function with the email data
-    const result = await sendEmailFn({
-      to,
-      subject,
-      html: body,
-      template: templateId,
-      data
-    });
-    
-    console.log('[EMAIL SERVICE] Email sent successfully via cloud function');
-    return true;
+    // First attempt: Use Firebase Cloud Function
+    try {
+      return await sendEmailViaFirebase(to, subject, body, templateId, data);
+    } catch (firebaseError) {
+      console.log('[EMAIL SERVICE] Firebase email failed, trying Mailgun fallback');
+      
+      // Second attempt: Use Mailgun API directly if configured
+      if (isMailgunConfigured) {
+        return await sendMailgunEmail(to, subject, body);
+      }
+      
+      // If Mailgun is not configured, throw the original error
+      throw firebaseError;
+    }
   } catch (error) {
-    console.error('[EMAIL SERVICE] Error sending email:', error);
+    console.error('[EMAIL SERVICE] All email sending methods failed:', error);
     
-    // Fallback to console log for development environments
-    console.log(`[EMAIL SERVICE] Fallback: Sending email to ${to}`);
+    // Fallback to console log for development
+    console.log(`[EMAIL SERVICE] Fallback: Email content that would be sent to ${to}`);
     console.log(`[EMAIL SERVICE] Subject: ${subject}`);
     console.log(`[EMAIL SERVICE] Body: ${body}`);
     
