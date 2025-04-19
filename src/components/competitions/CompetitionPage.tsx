@@ -100,17 +100,17 @@ const Badge = styled.span<{ variant: 'primary' | 'featured' | 'limited' | 'statu
   background-color: ${props => {
     switch (props.variant) {
       case 'featured': return 'rgba(245, 158, 11, 0.2)';
-      case 'limited': return 'rgba(239, 68, 68, 0.2)';
-      case 'status': return 'rgba(22, 163, 74, 0.2)';
-      default: return 'rgba(0, 136, 204, 0.2)';
+      case 'limited': return 'rgba(67, 56, 202, 0.2)';
+      case 'status': return 'rgba(20, 83, 45, 0.6)';
+      default: return 'rgba(30, 58, 138, 0.5)';
     }
   }};
   color: ${props => {
     switch (props.variant) {
       case 'featured': return 'rgb(245, 158, 11)';
-      case 'limited': return 'rgb(239, 68, 68)';
-      case 'status': return 'rgb(22, 163, 74)';
-      default: return 'rgb(0, 174, 239)';
+      case 'limited': return 'rgb(139, 92, 246)';
+      case 'status': return 'rgb(240, 253, 244)';
+      default: return 'rgb(219, 234, 254)';
     }
   }};
   padding: 0.25rem 0.75rem;
@@ -597,13 +597,13 @@ const Step = styled.div`
   
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 8px 16px rgba(234, 181, 22, 0.2);
   }
 `;
 
 const StepNumber = styled.div`
-  background-color: hsl(var(--primary));
-  color: white;
+  background-color: #eab516;
+  color: black;
   width: 2.5rem;
   height: 2.5rem;
   border-radius: 9999px;

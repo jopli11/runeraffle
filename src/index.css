@@ -1,29 +1,39 @@
+@import "./styles/probemas-theme.css";
 @import "tailwindcss/preflight";
 @tailwind utilities;
 :root {
-    /* Clean modern theme with better contrast */
-    --background: 220 35% 13%;
-    /* Dark blue background */
+    /* Probemas theme */
+    --background: 218 35% 7%;
+    /* Dark background from their site */
     --foreground: 0 0% 100%;
     /* White text */
-    --card: 222 47% 11%;
+    --card: 222 42% 11%;
+    /* Slightly lighter dark blue for cards */
     --card-foreground: 0 0% 100%;
-    --popover: 222 47% 11%;
+    /* White text on cards */
+    --popover: 222 42% 11%;
     --popover-foreground: 0 0% 100%;
-    --primary: 196 100% 50%;
-    /* Bright blue for primary elements */
-    --primary-foreground: 0 0% 100%;
-    --secondary: 217 19% 27%;
-    --secondary-foreground: 0 0% 100%;
+    --primary: 43 91% 50%;
+    /* #eab516 Gold color */
+    --primary-foreground: 0 0% 0%;
+    /* Black text on primary */
+    --secondary: 33 29% 16%;
+    /* #372f18 Secondary buttons */
+    --secondary-foreground: 43 91% 50%;
+    /* Gold text on secondary buttons */
     --muted: 217 33% 17%;
     --muted-foreground: 215 20% 80%;
-    --accent: 196 100% 50%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 43 91% 50%;
+    /* Gold accent color */
+    --accent-foreground: 0 0% 0%;
+    /* Black text on accent */
     --destructive: 0 63% 50%;
+    /* Keep red for destructive actions */
     --destructive-foreground: 0 0% 100%;
     --border: 217 33% 25%;
     --input: 217 33% 17%;
-    --ring: 196 100% 50%;
+    --ring: 43 91% 50%;
+    /* Gold ring color */
     --radius: 0.375rem;
 }
 

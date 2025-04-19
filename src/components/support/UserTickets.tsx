@@ -85,25 +85,25 @@ const TicketTitle = styled.h3`
 
 const TicketStatus = styled.span<{ status: string }>`
   font-size: 0.75rem;
-  padding: 0.25rem 0.5rem;
+  padding: 0.25rem 0.75rem;
   border-radius: 9999px;
   font-weight: 500;
   background-color: ${props => {
     switch (props.status) {
-      case 'open': return 'rgba(22, 163, 74, 0.2)';
-      case 'in_progress': return 'rgba(245, 158, 11, 0.2)';
-      case 'resolved': return 'rgba(37, 99, 235, 0.2)';
-      case 'closed': return 'rgba(107, 114, 128, 0.2)';
-      default: return 'rgba(107, 114, 128, 0.2)';
+      case 'open': return 'rgba(22, 163, 74, 0.6)';
+      case 'in_progress': return 'rgba(234, 181, 22, 0.6)';
+      case 'resolved': return 'rgba(234, 181, 22, 0.6)';
+      case 'closed': return 'rgba(107, 114, 128, 0.6)';
+      default: return 'rgba(107, 114, 128, 0.6)';
     }
   }};
   color: ${props => {
     switch (props.status) {
-      case 'open': return 'rgb(22, 163, 74)';
-      case 'in_progress': return 'rgb(245, 158, 11)';
-      case 'resolved': return 'rgb(37, 99, 235)';
-      case 'closed': return 'rgb(107, 114, 128)';
-      default: return 'rgb(107, 114, 128)';
+      case 'open': return 'rgb(240, 253, 244)';
+      case 'in_progress': return 'rgb(20, 20, 43)';
+      case 'resolved': return 'rgb(20, 20, 43)';
+      case 'closed': return 'rgb(228, 228, 231)';
+      default: return 'rgb(228, 228, 231)';
     }
   }};
 `;
@@ -116,18 +116,18 @@ const TicketType = styled.span<{ type: string }>`
   margin-right: 0.5rem;
   background-color: ${props => {
     switch (props.type) {
-      case 'prize_collection': return 'rgba(239, 68, 68, 0.2)';
-      case 'support': return 'rgba(37, 99, 235, 0.2)';
-      case 'refund': return 'rgba(245, 158, 11, 0.2)';
-      default: return 'rgba(107, 114, 128, 0.2)';
+      case 'prize_collection': return 'rgba(239, 68, 68, 0.6)';
+      case 'support': return 'rgba(234, 181, 22, 0.6)';
+      case 'refund': return 'rgba(245, 158, 11, 0.6)';
+      default: return 'rgba(107, 114, 128, 0.6)';
     }
   }};
   color: ${props => {
     switch (props.type) {
-      case 'prize_collection': return 'rgb(239, 68, 68)';
-      case 'support': return 'rgb(37, 99, 235)';
-      case 'refund': return 'rgb(245, 158, 11)';
-      default: return 'rgb(107, 114, 128)';
+      case 'prize_collection': return 'rgb(254, 226, 226)';
+      case 'support': return 'rgb(20, 20, 43)';
+      case 'refund': return 'rgb(254, 243, 199)';
+      default: return 'rgb(228, 228, 231)';
     }
   }};
 `;
@@ -156,36 +156,60 @@ const TicketDetails = styled.div`
   border: 1px solid hsl(var(--border));
   border-radius: 0.75rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  
+  h3 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: hsl(var(--primary));
+    position: relative;
+    
+    &:after {
+      content: '';
+      position: absolute;
+      bottom: -0.5rem;
+      left: 0;
+      width: 2.5rem;
+      height: 2px;
+      background-color: hsl(var(--primary));
+    }
+  }
 `;
 
 const TicketInfo = styled.div`
   margin-bottom: 2rem;
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  background: hsla(var(--background), 0.3);
+  border: 1px solid hsla(var(--border), 0.5);
 `;
 
 const InfoRow = styled.div`
   display: flex;
-  margin-bottom: 0.75rem;
+  margin-bottom: 1rem;
   font-size: 0.9rem;
+  align-items: center;
 `;
 
 const InfoLabel = styled.div`
   width: 120px;
   font-weight: 600;
-  color: hsl(var(--muted-foreground));
+  color: hsl(var(--primary));
 `;
 
 const InfoValue = styled.div`
   flex: 1;
+  font-weight: 500;
 `;
 
 const Description = styled.div`
   padding: 1.5rem;
-  background: hsl(var(--background));
+  background: hsla(var(--background), 0.3);
   border-radius: 0.5rem;
   white-space: pre-wrap;
   margin-bottom: 2rem;
   font-size: 0.9rem;
-  border: 1px solid hsl(var(--border));
+  border: 1px solid hsla(var(--border), 0.5);
 `;
 
 const Messages = styled.div`

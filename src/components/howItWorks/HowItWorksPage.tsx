@@ -100,8 +100,8 @@ const StepNumber = styled.div`
   width: 3rem;
   height: 3rem;
   border-radius: 9999px;
-  background: linear-gradient(135deg, hsl(var(--primary)), hsl(265, 83%, 45%));
-  color: white;
+  background-color: #eab516;
+  color: black;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -174,7 +174,8 @@ const FeatureIcon = styled.div`
   width: 2.5rem;
   height: 2.5rem;
   border-radius: 0.5rem;
-  background-color: hsl(var(--primary));
+  background-color: #eab516;
+  color: black;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -252,13 +253,13 @@ const Button = styled.button`
   border: none;
   transition: all 0.2s ease;
   gap: 0.5rem;
-  background: linear-gradient(135deg, hsl(var(--primary)), hsl(265, 83%, 45%));
-  color: white;
+  background-color: #eab516;
+  color: black;
   font-size: 1.125rem;
   
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 4px 12px rgba(234, 181, 22, 0.3);
   }
 `;
 

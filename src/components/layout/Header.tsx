@@ -13,7 +13,7 @@ const HeaderContainer = styled.header`
   z-index: 50;
   width: 100%;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  background-color: hsl(222, 47%, 11%);
+  background-color: hsl(var(--card));
 `;
 
 const Container = styled.div`
@@ -44,16 +44,22 @@ const Logo = styled(Link)`
   position: relative;
   
   &:hover {
-    color: hsl(var(--primary));
-  }
-  
-  span {
-    letter-spacing: 0.5px;
+    opacity: 0.9;
   }
 `;
 
 const LogoHighlight = styled.span`
   color: hsl(var(--primary));
+`;
+
+// New logo parts for Probemas Raffles
+const LogoPro = styled.span`
+  color: hsl(var(--primary));
+  font-weight: 800;
+`;
+
+const LogoBemas = styled.span`
+  color: white;
   font-weight: 800;
 `;
 
@@ -120,7 +126,7 @@ const GhostButton = styled(Button)`
 
 const PrimaryButton = styled(Button)`
   background-color: hsl(var(--primary));
-  color: white;
+  color: hsl(var(--primary-foreground));
   border: none;
   
   &:hover {
@@ -283,28 +289,28 @@ export function Header() {
               </HamburgerButton>
             )}
             <Logo to="/">
-              <span>Rune<LogoHighlight>Raffle</LogoHighlight></span>
+              <span><LogoPro>Pro</LogoPro><LogoBemas>bemas</LogoBemas></span>
             </Logo>
             
             {!isMobile && (
               <DesktopNav>
-                <NavLink to="/" active={currentPath === '/' ? 'true' : undefined}>
+                <NavLink to="/" active={currentPath === '/' ? true : undefined}>
                   Home
                 </NavLink>
-                <NavLink to="/competitions" active={(currentPath === '/competitions' || currentPath.startsWith('/competition/')) ? 'true' : undefined}>
-                  Competitions
+                <NavLink to="/competitions" active={(currentPath === '/competitions' || currentPath.startsWith('/competition/')) ? true : undefined}>
+                  Raffles
                 </NavLink>
-                <NavLink to="/winners" active={currentPath === '/winners' ? 'true' : undefined}>
+                <NavLink to="/winners" active={currentPath === '/winners' ? true : undefined}>
                   Winners
                 </NavLink>
-                <NavLink to="/how-it-works" active={currentPath === '/how-it-works' ? 'true' : undefined}>
+                <NavLink to="/how-it-works" active={currentPath === '/how-it-works' ? true : undefined}>
                   How It Works
                 </NavLink>
-                <NavLink to="/support" active={currentPath === '/support' ? 'true' : undefined}>
+                <NavLink to="/support" active={currentPath === '/support' ? true : undefined}>
                   Support
                 </NavLink>
                 {isAdmin && (
-                  <NavLink to="/admin" active={currentPath === '/admin' ? 'true' : undefined}>
+                  <NavLink to="/admin" active={currentPath === '/admin' ? true : undefined}>
                     Admin
                   </NavLink>
                 )}
@@ -356,7 +362,7 @@ export function Header() {
                 Home
               </MobileNavLink>
               <MobileNavLink to="/competitions" active={(currentPath === '/competitions' || currentPath.startsWith('/competition/')) ? 'true' : undefined}>
-                Competitions
+                Raffles
               </MobileNavLink>
               <MobileNavLink to="/winners" active={currentPath === '/winners' ? 'true' : undefined}>
                 Winners

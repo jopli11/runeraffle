@@ -4,7 +4,7 @@ import styled from '@emotion/styled';
 // Styled components
 const FooterContainer = styled.footer`
   width: 100%;
-  background-color: hsl(222, 47%, 8%);
+  background-color: hsl(220, 47%, 5%);
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   padding: 3rem 0 1.5rem;
 `;
@@ -23,19 +23,23 @@ const LogoContainer = styled.div`
 `;
 
 const Logo = styled.div`
-  display: flex;
-  align-items: center;
+  font-size: 1.5rem;
   font-weight: bold;
-  font-size: 2rem;
   color: white;
-
-  span {
-    letter-spacing: 0.5px;
-  }
 `;
 
 const LogoHighlight = styled.span`
   color: hsl(var(--primary));
+`;
+
+// Logo parts for Probemas Raffles
+const LogoPro = styled.span`
+  color: hsl(var(--primary));
+  font-weight: 800;
+`;
+
+const LogoBemas = styled.span`
+  color: white;
   font-weight: 800;
 `;
 
@@ -52,13 +56,13 @@ const SocialLink = styled.a`
   width: 3rem;
   height: 3rem;
   border-radius: 50%;
-  background-color: hsl(222, 47%, 11%);
+  background-color: hsl(var(--card));
   color: rgba(255, 255, 255, 0.8);
   transition: all 0.2s ease;
 
   &:hover {
     background-color: hsl(var(--primary));
-    color: white;
+    color: hsl(var(--primary-foreground));
     transform: translateY(-3px);
   }
 `;
@@ -196,7 +200,7 @@ export function Footer() {
         <FooterContent>
           <LogoContainer>
             <Logo>
-              Rune<LogoHighlight>Raffle</LogoHighlight>
+              <LogoPro>Pro</LogoPro><LogoBemas>bemas</LogoBemas>
             </Logo>
           </LogoContainer>
           
@@ -226,16 +230,16 @@ export function Footer() {
           <DisclaimerSection>
             
             <Disclaimer>
-              RuneRaffle.com is not affiliated, endorsed by, or in any way associated with RuneScape, Jagex Ltd or any of its subsidiaries or its affiliates.
+              Probemas | Raffles is not affiliated, endorsed by, or in any way associated with any game companies or their affiliates.
             </Disclaimer>
             
             <CompanyInfo>
-              RuneRaffle.com is a fan-made raffle website created for the RuneScape community.
+              Probemas | Raffles is a raffle website created for gamers to skip the grind and gear up.
             </CompanyInfo>
           </DisclaimerSection>
           
           <Copyright>
-            ©{currentYear}-{currentYear + 3} RuneRaffle. All Rights Reserved.
+            ©{currentYear} Probemas. All Rights Reserved.
           </Copyright>
         </FooterContent>
       </FooterContainer>

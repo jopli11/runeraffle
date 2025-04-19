@@ -18,11 +18,11 @@ const Container = styled.div<{ withGlow?: boolean; withPattern?: boolean; fullWi
   width: ${props => props.fullWidth ? '100%' : 'auto'};
   
   ${props => props.withGlow && `
-    box-shadow: 0 0 20px rgba(99, 102, 241, 0.12);
+    box-shadow: 0 0 20px rgba(234, 181, 22, 0.15);
     border: 1px solid transparent;
     background-image: 
       linear-gradient(hsl(var(--card)), hsl(var(--card))), 
-      linear-gradient(to right, hsl(var(--primary)), hsl(265, 83%, 45%));
+      linear-gradient(to right, hsl(var(--primary)), hsl(35, 80%, 30%));
     background-origin: border-box;
     background-clip: padding-box, border-box;
   `}

@@ -41,7 +41,7 @@ const HeroSection = styled.div`
   text-align: center;
   position: relative;
   overflow: hidden;
-  background: linear-gradient(135deg, hsl(var(--background)), hsl(222, 47%, 15%));
+  background: linear-gradient(135deg, #1a1e2c, #0f111a);
   border-radius: 1rem;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   
@@ -52,7 +52,7 @@ const HeroSection = styled.div`
     left: 0;
     right: 0;
     bottom: 0;
-    background-image: radial-gradient(circle at 20px 20px, rgba(255, 255, 255, 0.05) 2px, transparent 0);
+    background-image: radial-gradient(circle at 20px 20px, rgba(255, 255, 255, 0.03) 2px, transparent 0);
     background-size: 30px 30px;
     opacity: 0.4;
     z-index: 0;
@@ -90,6 +90,22 @@ const FirstWord = styled.span`
 
 const SecondWord = styled.span`
   color: hsl(var(--primary));
+`;
+
+// Update to have PRO in yellow and BEMAS in white
+const LogoFirstPart = styled.span`
+  color: hsl(var(--primary));
+  font-weight: 800;
+`;
+
+const LogoSecondPart = styled.span`
+  color: white;
+  font-weight: 800;
+`;
+
+const LogoThirdPart = styled.span`
+  color: hsl(var(--primary));
+  font-weight: 800;
 `;
 
 const HeroDescription = styled.p`
@@ -137,11 +153,11 @@ const Button = styled.button`
 
 const PrimaryButton = styled(Button)`
   background-color: hsl(var(--primary));
-  color: white;
+  color: hsl(var(--primary-foreground));
   padding: 0.875rem 2rem;
   font-size: 1.125rem;
   font-weight: 600;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 10px 15px -3px rgba(234, 181, 22, 0.25);
   position: relative;
   overflow: hidden;
   
@@ -159,22 +175,20 @@ const PrimaryButton = styled(Button)`
 
   &:hover {
     transform: translateY(-4px);
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 20px 25px -5px rgba(234, 181, 22, 0.3);
   }
 `;
 
 const SecondaryButton = styled(Button)`
-  background-color: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: white;
+  background-color: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
   padding: 0.875rem 2rem;
   font-size: 1.125rem;
   font-weight: 600;
+  border: 1px solid hsl(var(--primary));
   
   &:hover {
-    background-color: rgba(255, 255, 255, 0.15);
+    background-color: #453b1f;
     transform: translateY(-4px);
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
   }
@@ -217,16 +231,16 @@ const BadgeContainer = styled.div`
 const Badge = styled.span<{ variant: 'primary' | 'featured' | 'limited' }>`
   background-color: ${props => {
     switch (props.variant) {
-      case 'featured': return 'rgba(245, 158, 11, 0.2)';
+      case 'featured': return 'rgba(234, 181, 22, 0.2)';
       case 'limited': return 'rgba(239, 68, 68, 0.2)';
-      default: return 'rgba(0, 136, 204, 0.2)';
+      default: return 'rgba(234, 181, 22, 0.2)';
     }
   }};
   color: ${props => {
     switch (props.variant) {
-      case 'featured': return 'rgb(245, 158, 11)';
+      case 'featured': return '#eab516';
       case 'limited': return 'rgb(239, 68, 68)';
-      default: return 'rgb(0, 174, 239)';
+      default: return '#eab516';
     }
   }};
   padding: 0.25rem 0.75rem;
@@ -421,7 +435,7 @@ const IconContainer = styled.div`
   z-index: 1;
   width: 3.5rem;
   height: 3.5rem;
-  background-color: rgba(0, 174, 239, 0.2);
+  background-color: rgba(234, 181, 22, 0.2);
   border-radius: 9999px;
   display: flex;
   align-items: center;
@@ -442,18 +456,18 @@ const CardBadgeContainer = styled.div`
 const DifficultyBadge = styled.span<{ difficulty: 'easy' | 'medium' | 'hard' }>`
   background-color: ${props => {
     switch (props.difficulty) {
-      case 'easy': return 'rgba(22, 163, 74, 0.2)';
-      case 'medium': return 'rgba(245, 158, 11, 0.2)';
-      case 'hard': return 'rgba(239, 68, 68, 0.2)';
-      default: return 'rgba(22, 163, 74, 0.2)';
+      case 'easy': return 'rgba(20, 83, 45, 0.6)';
+      case 'medium': return 'rgba(146, 64, 14, 0.6)';
+      case 'hard': return 'rgba(76, 5, 25, 0.6)';
+      default: return 'rgba(20, 83, 45, 0.6)';
     }
   }};
   color: ${props => {
     switch (props.difficulty) {
-      case 'easy': return 'rgb(22, 163, 74)';
-      case 'medium': return 'rgb(245, 158, 11)';
-      case 'hard': return 'rgb(239, 68, 68)';
-      default: return 'rgb(22, 163, 74)';
+      case 'easy': return 'rgb(240, 253, 244)';
+      case 'medium': return 'rgb(254, 243, 199)';
+      case 'hard': return 'rgb(254, 226, 226)';
+      default: return 'rgb(240, 253, 244)';
     }
   }};
   padding: 0.25rem 0.75rem;
@@ -463,8 +477,8 @@ const DifficultyBadge = styled.span<{ difficulty: 'easy' | 'medium' | 'hard' }>`
 `;
 
 const TimeBadge = styled.span`
-  background-color: rgba(0, 174, 239, 0.2);
-  color: rgb(0, 174, 239);
+  background-color: rgba(234, 181, 22, 0.2);
+  color: #eab516;
   padding: 0.25rem 0.75rem;
   border-radius: 0.25rem;
   font-size: 0.75rem;
@@ -540,7 +554,7 @@ const StepWrapper = styled.div<{ itemKey?: number }>`
   
   &:hover .step-icon {
     transform: scale(1.1);
-    background-color: rgba(0, 174, 239, 0.3);
+    background-color: rgba(234, 181, 22, 0.3);
   }
   
   &:hover .step-icon::after {
@@ -551,7 +565,7 @@ const StepWrapper = styled.div<{ itemKey?: number }>`
 const StepIconWrapper = styled.div<{ color: string }>`
   width: 5rem;
   height: 5rem;
-  background-color: ${props => `rgba(${props.color}, 0.2)`};
+  background-color: rgba(234, 181, 22, 0.2);
   border-radius: 9999px;
   display: flex;
   align-items: center;
@@ -568,7 +582,7 @@ const StepIconWrapper = styled.div<{ color: string }>`
     right: -5px;
     bottom: -5px;
     border-radius: 9999px;
-    border: 2px solid ${props => `rgba(${props.color}, 0.3)`};
+    border: 2px solid rgba(234, 181, 22, 0.3);
     opacity: 0;
     transition: all 0.3s ease;
   }
@@ -624,7 +638,7 @@ const formatTimeLeft = (endsAt: any) => {
 const StepNumber = styled.span<{ color: string }>`
   font-size: 1.25rem;
   font-weight: bold;
-  color: ${props => `rgb(${props.color})`};
+  color: #eab516;
 `;
 
 const StepTitle = styled.h3`
@@ -778,15 +792,15 @@ export default function App() {
       <HeroSection>
         <HeroContainer>
           <LogoHeading>
-            <FirstWord>Rune</FirstWord><SecondWord>Raffle</SecondWord>
+            <LogoFirstPart>Pro</LogoFirstPart><LogoSecondPart>bemas</LogoSecondPart> <span style={{ color: 'white' }}>|</span> <LogoThirdPart>Raffles</LogoThirdPart>
           </LogoHeading>
           <HeroDescription>
-            Enter exclusive RuneScape item giveaways with verified fair draw technology.
-            Buy tickets, win rare items, and join a community of passionate players.
+            Skip the Grind. Gear Up. Enjoy the Game. 
+            Enter exclusive item giveaways with verified fair draw technology.
           </HeroDescription>
           <ButtonGroup>
             <PrimaryButton onClick={handleNavigateToCompetitions}>
-              Browse Competitions <ArrowRightSvg />
+              Browse Raffles <ArrowRightSvg />
             </PrimaryButton>
             <SecondaryButton onClick={handleNavigateToHowItWorks}>
               How It Works
@@ -950,7 +964,7 @@ export default function App() {
                     <CompetitionImage src={competition.imageUrl} alt={competition.title} />
                   ) : (
                     <IconContainer>
-                      <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" color="rgb(0, 174, 239)">
+                      <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" color="#eab516">
                         <path d="M12 22a10 10 0 1 1 0-20 10 10 0 0 1 0 20zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm1-8.41l2.54 2.53a1 1 0 0 1-1.42 1.42L11.3 12.7A1 1 0 0 1 11 12V8a1 1 0 0 1 2 0v3.59z"/>
                       </svg>
                     </IconContainer>
@@ -1020,8 +1034,8 @@ export default function App() {
             }
           ].map((item, index) => (
             <StepWrapper key={index} itemKey={index}>
-              <StepIconWrapper className="step-icon" color="0, 174, 239">
-                <StepNumber color="0, 174, 239">{item.step}</StepNumber>
+              <StepIconWrapper className="step-icon" color="234, 181, 22">
+                <StepNumber color="234, 181, 22">{item.step}</StepNumber>
               </StepIconWrapper>
               <StepTitle>{item.title}</StepTitle>
               <StepDescription>

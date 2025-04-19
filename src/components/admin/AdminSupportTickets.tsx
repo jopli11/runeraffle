@@ -60,20 +60,23 @@ const TicketsList = styled.div`
   overflow-y: auto;
   border: 1px solid hsl(var(--border));
   border-radius: 0.5rem;
+  background: hsla(var(--background), 0.6);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 `;
 
 const TicketItem = styled.div<{ isSelected?: boolean }>`
   padding: 1rem;
   border-bottom: 1px solid hsl(var(--border));
-  background: ${props => props.isSelected ? 'hsl(var(--accent))' : 'transparent'};
+  background: ${props => props.isSelected ? 'hsla(var(--card), 0.8)' : 'hsla(var(--card), 0.4)'};
   cursor: pointer;
+  transition: background-color 0.2s ease;
   
   &:last-child {
     border-bottom: none;
   }
   
   &:hover {
-    background: hsl(var(--accent));
+    background: hsla(var(--accent), 0.7);
   }
 `;
 
@@ -85,56 +88,59 @@ const TicketHeader = styled.div`
 `;
 
 const TicketTitle = styled.h3`
-  font-size: 0.875rem;
+  font-size: 0.9rem;
   font-weight: 600;
   margin: 0;
+  color: hsl(var(--foreground));
 `;
 
 const TicketStatus = styled.span<{ status: string }>`
   font-size: 0.75rem;
-  padding: 0.125rem 0.5rem;
+  padding: 0.25rem 0.75rem;
   border-radius: 9999px;
   font-weight: 500;
   background-color: ${props => {
     switch (props.status) {
-      case 'open': return 'rgba(22, 163, 74, 0.2)';
-      case 'in_progress': return 'rgba(245, 158, 11, 0.2)';
-      case 'resolved': return 'rgba(37, 99, 235, 0.2)';
-      case 'closed': return 'rgba(107, 114, 128, 0.2)';
-      default: return 'rgba(107, 114, 128, 0.2)';
+      case 'open': return 'rgba(20, 83, 45, 0.6)';
+      case 'in_progress': return 'rgba(76, 29, 149, 0.6)';
+      case 'resolved': return 'rgba(30, 64, 175, 0.6)';
+      case 'closed': return 'rgba(55, 65, 81, 0.6)';
+      default: return 'rgba(55, 65, 81, 0.6)';
     }
   }};
   color: ${props => {
     switch (props.status) {
-      case 'open': return 'rgb(22, 163, 74)';
-      case 'in_progress': return 'rgb(245, 158, 11)';
-      case 'resolved': return 'rgb(37, 99, 235)';
-      case 'closed': return 'rgb(107, 114, 128)';
-      default: return 'rgb(107, 114, 128)';
+      case 'open': return 'rgb(240, 253, 244)';
+      case 'in_progress': return 'rgb(243, 232, 255)';
+      case 'resolved': return 'rgb(219, 234, 254)';
+      case 'closed': return 'rgb(229, 231, 235)';
+      default: return 'rgb(229, 231, 235)';
     }
   }};
 `;
 
 const TicketType = styled.span<{ type: string }>`
   font-size: 0.75rem;
-  padding: 0.125rem 0.5rem;
+  padding: 0.25rem 0.75rem;
   border-radius: 9999px;
   font-weight: 500;
   margin-right: 0.5rem;
   background-color: ${props => {
     switch (props.type) {
-      case 'prize_collection': return 'rgba(239, 68, 68, 0.2)';
-      case 'support': return 'rgba(37, 99, 235, 0.2)';
-      case 'refund': return 'rgba(245, 158, 11, 0.2)';
-      default: return 'rgba(107, 114, 128, 0.2)';
+      case 'prize_collection': return 'rgba(153, 27, 27, 0.6)';
+      case 'support': return 'rgba(26, 86, 219, 0.6)';
+      case 'refund': return 'rgba(146, 64, 14, 0.6)';
+      case 'high': return 'rgba(153, 27, 27, 0.6)';
+      default: return 'rgba(55, 65, 81, 0.6)';
     }
   }};
   color: ${props => {
     switch (props.type) {
-      case 'prize_collection': return 'rgb(239, 68, 68)';
-      case 'support': return 'rgb(37, 99, 235)';
-      case 'refund': return 'rgb(245, 158, 11)';
-      default: return 'rgb(107, 114, 128)';
+      case 'prize_collection': return 'rgb(254, 226, 226)';
+      case 'support': return 'rgb(219, 234, 254)';
+      case 'refund': return 'rgb(254, 243, 199)';
+      case 'high': return 'rgb(254, 226, 226)';
+      default: return 'rgb(229, 231, 235)';
     }
   }};
 `;
@@ -160,15 +166,16 @@ const TicketDetailsEmpty = styled.div`
 `;
 
 const DetailHeader = styled.div`
-  padding: 1rem;
-  background: hsl(var(--accent));
+  padding: 1.5rem;
+  background: hsla(var(--card), 0.6);
   border-bottom: 1px solid hsl(var(--border));
 `;
 
 const DetailTitle = styled.h3`
-  font-size: 1rem;
+  font-size: 1.25rem;
   font-weight: 600;
-  margin: 0 0 0.5rem 0;
+  margin: 0 0 1rem 0;
+  color: hsl(var(--foreground));
 `;
 
 const DetailMeta = styled.div`
@@ -182,23 +189,54 @@ const DetailMetaItem = styled.div`
   align-items: center;
   gap: 0.5rem;
   font-size: 0.75rem;
+  
+  span {
+    color: hsl(var(--muted-foreground));
+    font-weight: 500;
+  }
+  
+  strong {
+    color: hsl(var(--foreground));
+    font-weight: 600;
+  }
 `;
 
 const DetailContent = styled.div`
-  padding: 1rem;
+  padding: 1.5rem;
+  background: hsla(var(--background), 0.7);
+  
+  h4 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0 0 1rem 0;
+    color: hsl(var(--foreground));
+    position: relative;
+    padding-bottom: 0.5rem;
+    
+    &:after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 3rem;
+      height: 2px;
+      background-color: hsla(var(--primary), 0.5);
+    }
+  }
 `;
 
 const DetailDescription = styled.div`
   white-space: pre-wrap;
-  background: hsl(var(--background));
-  padding: 1rem;
-  border-radius: 0.375rem;
+  background: hsla(var(--card), 0.5);
+  padding: 1.25rem;
+  border-radius: 0.5rem;
   margin-bottom: 1.5rem;
   font-size: 0.875rem;
+  border: 1px solid hsla(var(--border), 0.7);
 `;
 
 const MessagesSection = styled.div`
-  margin-top: 1.5rem;
+  margin-top: 2rem;
 `;
 
 const MessagesList = styled.div`
@@ -232,10 +270,11 @@ const MessageAvatar = styled.div<{ isAdmin?: boolean }>`
 
 const MessageContent = styled.div`
   flex: 1;
-  background: hsl(var(--background));
-  padding: 0.75rem;
-  border-radius: 0.375rem;
+  background: hsla(var(--card), 0.5);
+  padding: 1rem;
+  border-radius: 0.5rem;
   font-size: 0.875rem;
+  border: 1px solid hsla(var(--border), 0.3);
 `;
 
 const MessageHeader = styled.div`
@@ -356,8 +395,9 @@ const EmptyState = styled.div`
 
 const ActionsContainer = styled.div`
   display: flex;
-  gap: 0.5rem;
+  justify-content: flex-end;
   margin-top: 1rem;
+  gap: 0.75rem;
 `;
 
 const formatDate = (timestamp: any): string => {
@@ -648,11 +688,13 @@ const AdminSupportTickets: React.FC = () => {
                       style={{
                         padding: '0.5rem 1rem',
                         background: 'hsl(var(--primary))',
-                        color: 'white',
+                        color: 'black',
                         border: 'none',
-                        borderRadius: '0.25rem',
+                        borderRadius: '0.375rem',
                         cursor: 'pointer',
-                        opacity: selectedTicket.status === 'resolved' ? 0.5 : 1
+                        opacity: selectedTicket.status === 'resolved' ? 0.5 : 1,
+                        fontWeight: '600',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
                       }}
                     >
                       Mark as Resolved

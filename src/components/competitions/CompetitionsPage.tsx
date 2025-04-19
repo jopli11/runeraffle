@@ -192,10 +192,10 @@ const StatusBadge = styled.div<{ status: 'active' | 'ending' | 'complete' }>`
   font-weight: 600;
   background-color: ${props => {
     switch (props.status) {
-      case 'active': return 'rgba(22, 163, 74, 0.8)';
-      case 'ending': return 'rgba(245, 158, 11, 0.8)';
-      case 'complete': return 'rgba(107, 114, 128, 0.8)';
-      default: return 'rgba(22, 163, 74, 0.8)';
+      case 'active': return 'rgba(20, 83, 45, 0.8)';
+      case 'ending': return 'rgba(146, 64, 14, 0.8)';
+      case 'complete': return 'rgba(55, 65, 81, 0.8)';
+      default: return 'rgba(20, 83, 45, 0.8)';
     }
   }};
   color: white;
@@ -209,10 +209,10 @@ const DifficultyBadge = styled.div<{ difficulty: 'easy' | 'medium' | 'hard' }>`
   font-weight: 600;
   background-color: ${props => {
     switch (props.difficulty) {
-      case 'easy': return 'rgba(22, 163, 74, 0.8)';
-      case 'medium': return 'rgba(245, 158, 11, 0.8)';
-      case 'hard': return 'rgba(239, 68, 68, 0.8)';
-      default: return 'rgba(22, 163, 74, 0.8)';
+      case 'easy': return 'rgba(20, 83, 45, 0.8)';
+      case 'medium': return 'rgba(146, 64, 14, 0.8)';
+      case 'hard': return 'rgba(76, 5, 25, 0.8)';
+      default: return 'rgba(20, 83, 45, 0.8)';
     }
   }};
   color: white;
@@ -516,9 +516,9 @@ export default function CompetitionsPage() {
   return (
     <Container>
       <PageHeader>
-        <Heading1>Competitions</Heading1>
+        <Heading1>Raffles</Heading1>
         <Description>
-          Browse and enter our current RuneScape raffles. Each entry gives you a chance to win 
+          Skip the Grind. Gear Up. Enjoy the Game. Enter our raffles for a chance to win 
           valuable items with our provably fair drawing system.
         </Description>
       </PageHeader>
@@ -529,7 +529,7 @@ export default function CompetitionsPage() {
             active={filter === 'all'} 
             onClick={() => setFilter('all')}
           >
-            All Competitions
+            All Raffles
           </FilterButton>
           <FilterButton 
             active={filter === 'active'} 
@@ -553,9 +553,9 @@ export default function CompetitionsPage() {
         
         <CompetitionListHeader>
           <ListHeading>
-            {filter === 'all' ? 'All Competitions' : 
-             filter === 'active' ? 'Active Competitions' : 
-             filter === 'ending' ? 'Ending Soon' : 'Completed Competitions'}
+            {filter === 'all' ? 'All Raffles' : 
+             filter === 'active' ? 'Active Raffles' : 
+             filter === 'ending' ? 'Ending Soon' : 'Completed Raffles'}
           </ListHeading>
           
           <SortContainer>
@@ -653,7 +653,7 @@ export default function CompetitionsPage() {
                     </div>
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <div style={{ color: 'rgb(14, 165, 233)' }}>
+                        <div style={{ color: '#eab516' }}>
                           <TimerIcon />
                         </div>
                         <div style={{ fontWeight: 'bold' }}>
